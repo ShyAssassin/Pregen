@@ -68,7 +68,7 @@ impl NativeWindow for X11Window {
         todo!()
     }
 
-    fn __get_cursor_position(&self) -> (f32, f32) {
+    fn get_cursor_position(&self) -> (f32, f32) {
         todo!()
     }
 }

@@ -16,27 +16,27 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle + /* Send + Sync */ {
     fn get_size(&self) -> (u32, u32);
     fn get_clipboard(&self) -> String;
     fn get_content_scale(&self) -> (f32, f32);
+    fn get_cursor_position(&self) -> (f32, f32);
 
     fn set_title(&mut self, title: &str);
     fn set_clipboard(&mut self, text: &str);
     fn set_resizeable(&mut self, resizable: bool);
     fn set_cursor_visible(&mut self, visible: bool);
     fn set_cursor_position(&mut self, x: f32, y: f32);
-
-    #[deprecated]
-    fn __get_cursor_position(&self) -> (f32, f32);
 }
 
 pub struct Window {
-    title: String,
     width: u32,
     height: u32,
+    title: String,
+    backend: WindowBackend,
+    window: Box<dyn NativeWindow>,
+
+    // Window state
     is_focused: bool,
     scale: (f32, f32),
     should_close: bool,
     cursor_visible: bool,
-    backend: WindowBackend,
-    window: Box<dyn NativeWindow>,
 }
 
 impl Window {
@@ -59,6 +59,7 @@ impl Window {
             }
             _ => panic!("Unsupported window backend selected: {:?}", backend),
         };
+        window.show();
         window.set_title(name);
         window.resize(width, height);
         window.set_resizeable(resizeable);
@@ -67,7 +68,6 @@ impl Window {
         let (fwidth, fheight) = window.get_size();
         assert_eq!((fwidth, fheight), (width, height));
 
-        window.show();
         let focus = window.is_focused();
         return Self {
             title: name.to_string(),
@@ -118,7 +118,6 @@ impl Window {
     }
 
     pub fn get_framebuffer_size(&self) -> (i32, i32) {
-        // On high DPI displays, the framebuffer is larger than the window
         let x = self.width as f32 * self.scale.0;
         let y = self.height as f32 * self.scale.1;
         return (x as i32, y as i32);

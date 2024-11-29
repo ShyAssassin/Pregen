@@ -131,7 +131,7 @@ impl NativeWindow for GlfwWindow {
         self.window.set_cursor_pos(x as f64, y as f64);
     }
 
-    fn __get_cursor_position(&self) -> (f32, f32) {
+    fn get_cursor_position(&self) -> (f32, f32) {
         let (x, y) = self.window.get_cursor_pos();
         return (x as f32, y as f32);
     }

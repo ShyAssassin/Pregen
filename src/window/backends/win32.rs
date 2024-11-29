@@ -36,9 +36,9 @@ struct Win32WindowState {
 
 #[derive(Debug)]
 pub struct Win32Window {
-    pub hwnd: HWND,
-    pub class: Vec<u16>,
-    pub instance: HINSTANCE,
+    hwnd: HWND,
+    class: Vec<u16>,
+    instance: HINSTANCE,
     state: Arc<Win32WindowState>,
 }
 
@@ -255,8 +255,8 @@ impl NativeWindow for Win32Window {
     }
 
     fn shutdown(&mut self) {
+        // Cant use PostQuitMessage since that would effect every window
         unsafe {
-            // Cant use PostQuitMessage since that would effect every window
             DestroyWindow(self.hwnd);
         }
     }
@@ -414,7 +414,7 @@ impl NativeWindow for Win32Window {
         }
     }
 
-    fn __get_cursor_position(&self) -> (f32, f32) {
+    fn get_cursor_position(&self) -> (f32, f32) {
         unsafe {
             let mut point = POINT { x: 0, y: 0 };
             GetCursorPos(&mut point);
