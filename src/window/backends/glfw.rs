@@ -12,7 +12,10 @@ pub struct GlfwWindow {
 
 impl NativeWindow for GlfwWindow {
     fn init() -> Self {
-        let mut glfw = glfw::init_no_callbacks().expect("Failed to initialize GLFW");
+        let mut glfw = glfw::init(|err: glfw::Error, desc: String| {
+            eprintln!("GLFW Error: {:?} - {}", err, desc);
+        }).expect("Failed to initialize GLFW");
+
         glfw.set_swap_interval(glfw::SwapInterval::None);
         glfw.window_hint(glfw::WindowHint::ScaleToMonitor(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
