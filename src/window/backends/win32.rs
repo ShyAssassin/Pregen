@@ -443,15 +443,8 @@ impl HasDisplayHandle for Win32Window {
 impl From<WPARAM> for Key {
     fn from(key: WPARAM) -> Self {
         match key {
-            65 => Key::A, 66 => Key::B, 67 => Key::C, 68 => Key::D,
-            69 => Key::E, 70 => Key::F, 71 => Key::G, 72 => Key::H,
-            73 => Key::I, 74 => Key::J, 75 => Key::K, 76 => Key::L,
-            77 => Key::M, 78 => Key::N, 79 => Key::O, 80 => Key::P,
-            81 => Key::Q, 82 => Key::R, 83 => Key::S, 84 => Key::T,
-            85 => Key::U, 86 => Key::V, 87 => Key::W, 88 => Key::X,
-            89 => Key::Y, 90 => Key::Z, 48 => Key::Num0, 49 => Key::Num1,
-            50 => Key::Num2, 51 => Key::Num3, 52 => Key::Num4, 53 => Key::Num5,
-            54 => Key::Num6, 55 => Key::Num7, 56 => Key::Num8, 57 => Key::Num9,
+            65..=90 => Key::from_char((key as u8) as char), // A-Z
+            48..=57 => Key::from_digit((key as u8) as char), // 0-9
 
             32 => Key::Space, 13 => Key::Enter, 27 => Key::Escape, 9 => Key::Tab,
             8 => Key::Backspace, 45 => Key::Insert, 46 => Key::Delete, 36 => Key::Home,

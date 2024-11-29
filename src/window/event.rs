@@ -20,7 +20,6 @@ impl From<bool> for Action {
 #[derive(Debug, Clone, Copy)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Key {
-    Other(u32),
     // Arrow keys
     Left, Right, Up, Down,
     // Modifier keys
@@ -34,6 +33,28 @@ pub enum Key {
     Space, Enter, Escape, Tab, Backspace, Insert, Delete, Home, End, PageUp, PageDown,
     // "Operation" keys
     Minus, Equals, LeftBracket, RightBracket, Backslash, Semicolon, Apostrophe, Grave, Comma, Period, Slash,
+    // Any key that doesnt have a specific enum yet
+    Other(u32),
+}
+
+impl Key {
+    pub fn from_char(letter: char) -> Self {
+        match letter {
+            'A' => Key::A, 'B' => Key::B, 'C' => Key::C, 'D' => Key::D, 'E' => Key::E, 'F' => Key::F, 'G' => Key::G,
+            'H' => Key::H, 'I' => Key::I, 'J' => Key::J, 'K' => Key::K, 'L' => Key::L, 'M' => Key::M, 'N' => Key::N,
+            'O' => Key::O, 'P' => Key::P, 'Q' => Key::Q, 'R' => Key::R, 'S' => Key::S, 'T' => Key::T, 'U' => Key::U,
+            'V' => Key::V, 'W' => Key::W, 'X' => Key::X, 'Y' => Key::Y, 'Z' => Key::Z,
+            _ => panic!("Unknown key: {}", letter),
+        }
+    }
+
+    pub fn from_digit(digit: char) -> Self {
+        match digit {
+            '0' => Key::Num0, '1' => Key::Num1, '2' => Key::Num2, '3' => Key::Num3, '4' => Key::Num4,
+            '5' => Key::Num5, '6' => Key::Num6, '7' => Key::Num7, '8' => Key::Num8, '9' => Key::Num9,
+            _ => panic!("Unknown digit: {}", digit),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
