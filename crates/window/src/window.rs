@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use super::{WindowBackend, WindowEvent};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
-// use wgpu::{SurfaceTarget, SurfaceTargetUnsafe};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
 pub trait NativeWindow: HasWindowHandle + HasDisplayHandle + /* Send + Sync */ {
@@ -162,7 +161,7 @@ impl Window {
         return self.cursor_visible;
     }
 
-    fn get_aspect_ratio(&self) -> f32 {
+    pub fn get_aspect_ratio(&self) -> f32 {
         return self.width as f32 / self.height as f32;
     }
 
