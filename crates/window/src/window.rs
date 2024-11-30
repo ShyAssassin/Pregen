@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use super::{WindowBackend, WindowEvent};
-use wgpu::{SurfaceTarget, SurfaceTargetUnsafe};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
+// use wgpu::{SurfaceTarget, SurfaceTargetUnsafe};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
 pub trait NativeWindow: HasWindowHandle + HasDisplayHandle + /* Send + Sync */ {
@@ -44,17 +44,17 @@ impl Window {
         println!("Creating window with backend: {:?}", backend);
         let mut window: Box<dyn NativeWindow> = match backend {
             WindowBackend::Glfw => {
-                use crate::window::backends::GlfwWindow;
+                use crate::backends::GlfwWindow;
                 Box::new(GlfwWindow::init())
             }
             #[cfg(target_family = "windows")]
             WindowBackend::Win32 => {
-                use crate::window::backends::Win32Window;
+                use crate::backends::Win32Window;
                 Box::new(Win32Window::init())
             },
             #[cfg(all(target_family = "unix", not(target_os = "macos")))]
             WindowBackend::X11 => {
-                use crate::window::backends::X11Window;
+                use crate::backends::X11Window;
                 Box::new(X11Window::init())
             }
             _ => panic!("Unsupported window backend selected: {:?}", backend),
@@ -134,19 +134,6 @@ impl Window {
     pub fn close(mut self) {
         self.window.shutdown();
         self.set_should_close(true);
-    }
-
-    pub unsafe fn get_surface_target_unsafe(&self) -> SurfaceTargetUnsafe {
-        return SurfaceTargetUnsafe::RawHandle {
-            raw_window_handle: self.window_handle().unwrap().as_raw(),
-            raw_display_handle: self.display_handle().unwrap().as_raw(),
-        }
-    }
-
-    // TODO: i dont understand what lifetime is needed here
-    pub fn get_surface_target(&self) -> SurfaceTarget {
-        // return SurfaceTarget::from(self.window.as_ref());
-        todo!("Figure out what lifetimes are needed")
     }
 
     pub fn focus(&mut self) {

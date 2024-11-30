@@ -3,8 +3,6 @@ mod rend;
 mod math;
 mod asset;
 mod macros;
-mod logger;
-mod window;
 
 use wgpu as wg;
 use asset::Image;

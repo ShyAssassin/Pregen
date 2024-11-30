@@ -20,12 +20,12 @@ use winapi::um::winuser::{GetFocus, SIZE_MAXIMIZED, SIZE_MINIMIZED, WM_KEYDOWN, 
 
 use std::num::NonZero;
 use std::sync::{Mutex, Arc};
+use crate::window::NativeWindow;
 use std::ffi::{CStr, CString, OsStr};
-use crate::window::window::NativeWindow;
 use std::ptr::{null_mut, copy_nonoverlapping};
+use crate::{WindowEvent, Action, Key, MouseButton};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{Win32WindowHandle, RawWindowHandle};
-use crate::window::{WindowEvent, Action, Key, MouseButton};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
 #[derive(Debug)]
@@ -94,6 +94,7 @@ impl Win32Window {
                         SetCursor(null_mut());
                         return LRESULT::from(true);
                     }
+                    return LRESULT::from(false);
                 }
                 // MSDN says this should return false, it lied
                 return DefWindowProcW(hwnd, msg, w_param, l_param);

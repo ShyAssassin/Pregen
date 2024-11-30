@@ -1,13 +1,13 @@
-use crate::window::window::NativeWindow;
-use crate::window::{Key, Action, MouseButton, WindowEvent};
+use crate::window::NativeWindow;
+use crate::{Key, Action, MouseButton, WindowEvent};
 use glfw::{Glfw, GlfwReceiver, PWindow, WindowEvent as GlfwWindowEvent};
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, WindowHandle, HandleError};
 
 #[derive(Debug)]
 pub struct GlfwWindow {
-    pub glfw: Glfw,
-    pub window: PWindow,
-    pub events: GlfwReceiver<(f64, GlfwWindowEvent)>
+    glfw: Glfw,
+    window: PWindow,
+    events: GlfwReceiver<(f64, GlfwWindowEvent)>
 }
 
 impl NativeWindow for GlfwWindow {
