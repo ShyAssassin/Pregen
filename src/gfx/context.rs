@@ -1,8 +1,10 @@
 use std::sync::Arc;
 use std::fmt::Debug;
 use std::path::PathBuf;
+use wgpu::SurfaceTargetUnsafe;
+
+use window::Window;
 use crate::asset::Image;
-use crate::window::Window;
 use std::collections::HashMap;
 use super::{BindGroup, BindGroupState, PipelineDescriptor};
 use super::{RenderTargetFormat, TextureFormat};
@@ -39,8 +41,10 @@ impl RenderContext {
             }
         });
 
-        // let surface = instance.create_surface(window.get_surface_target()).unwrap();
-        let surface = unsafe {instance.create_surface_unsafe(window.get_surface_target_unsafe()).unwrap()};
+        let surface = unsafe {
+            let surface = SurfaceTargetUnsafe::from_window(window).unwrap();
+            instance.create_surface_unsafe(surface).unwrap()
+        };
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptionsBase {
             force_fallback_adapter: false,
             compatible_surface: Some(&surface),
