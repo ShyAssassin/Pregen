@@ -7,6 +7,7 @@ use winapi::shared::winerror::ERROR_CLASS_ALREADY_EXISTS;
 use winapi::um::winbase::{GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use winapi::shared::minwindef::{HINSTANCE, HIWORD, LOWORD, LPARAM, LPVOID, LRESULT, UINT, WPARAM};
 use winapi::um::winuser::{COLOR_BACKGROUND, HTCLIENT, WM_SETCURSOR, WM_SETFOCUS, WM_SYSCHAR};
+use winapi::um::winuser::{VK_F1, VK_F2, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9, VK_F10, VK_F11, VK_F12};
 use winapi::um::winuser::{AdjustWindowRect, GWL_STYLE, WM_DPICHANGED, WNDCLASSW, WS_CAPTION, WS_OVERLAPPEDWINDOW, WS_VISIBLE};
 use winapi::um::winuser::{ClientToScreen, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, MSG};
 use winapi::um::winuser::{WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP};
@@ -94,7 +95,6 @@ impl Win32Window {
                         SetCursor(null_mut());
                         return LRESULT::from(true);
                     }
-                    return LRESULT::from(false);
                 }
                 // MSDN says this should return false, it lied
                 return DefWindowProcW(hwnd, msg, w_param, l_param);
@@ -443,10 +443,15 @@ impl HasDisplayHandle for Win32Window {
 
 impl From<WPARAM> for Key {
     fn from(key: WPARAM) -> Self {
+        let key = key as i32;
         match key {
             65..=90 => Key::from_char((key as u8) as char), // A-Z
             48..=57 => Key::from_digit((key as u8) as char), // 0-9
+            VK_F1 => Key::F1, VK_F2 => Key::F2, VK_F3 => Key::F3, VK_F4 => Key::F4,
+            VK_F5 => Key::F5, VK_F6 => Key::F6, VK_F7 => Key::F7, VK_F8 => Key::F8,
+            VK_F9 => Key::F9, VK_F10 => Key::F10, VK_F11 => Key::F11, VK_F12 => Key::F12,
 
+            // TODO: convert these to the enums provided by WIN32
             32 => Key::Space, 13 => Key::Enter, 27 => Key::Escape, 9 => Key::Tab,
             8 => Key::Backspace, 45 => Key::Insert, 46 => Key::Delete, 36 => Key::Home,
             35 => Key::End, 33 => Key::PageUp, 34 => Key::PageDown, 160 => Key::LCtrl,

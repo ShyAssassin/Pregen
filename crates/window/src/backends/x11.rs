@@ -1,5 +1,5 @@
-use crate::window::WindowEvent;
-use crate::window::window::NativeWindow;
+use crate::WindowEvent;
+use crate::window::NativeWindow;
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, WindowHandle, HandleError};
 
 #[derive(Debug)]
