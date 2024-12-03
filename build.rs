@@ -25,7 +25,7 @@ fn main() {
         let api_url = format!("https://api.github.com/repos/{}/releases/latest", DXC_GITHUB);
         let output = Command::new("curl")
             .arg("-s").arg(&api_url)
-            .arg("-H").arg("User-Agent: rust-build-script")
+            .arg("-H").arg("User-Agent: Mozilla/5.0 Firefox/133.0")
             .output().expect("Failed to execute curl command");
         if !output.status.success() {
             panic!("Failed to get latest release: {}", String::from_utf8_lossy(&output.stderr));
