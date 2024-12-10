@@ -449,6 +449,8 @@ impl From<WPARAM> for Key {
 
             189 => Key::Minus, 187 => Key::Equals, 219 => Key::LeftBracket, 221 => Key::RightBracket, 220 => Key::Backslash, 186 => Key::Semicolon,
 
+            // VK_SHIFT is triggered by both LSHIFT and RSHIFT
+            VK_SHIFT => Key::Other(VK_SHIFT as u32),
             // VK_CONTROL is triggered by both LCONTROL and RCONTROL
             VK_CONTROL => Key::Other(VK_CONTROL as u32),
             _ => {
