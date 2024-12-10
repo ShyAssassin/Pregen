@@ -1,6 +1,11 @@
 mod glfw;
 pub use glfw::GlfwWindow;
 
+#[cfg(target_family = "wasm")]
+mod web;
+#[cfg(target_family = "wasm")]
+pub use web::WebWindow;
+
 #[cfg(target_family = "windows")]
 mod win32;
 #[cfg(target_family = "windows")]
