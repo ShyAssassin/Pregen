@@ -62,7 +62,7 @@ impl Texture {
         let width = size.width >> level;
         let height = size.height >> level;
         if width * height * 4 != data.len() as u32 {
-            panic!("Data size: `{}` does not match mip level size: `{}`", data.len(), width * height * 4);
+            panic!("Data size: `{}` does not match mip level {} size: `{}`", data.len(), level, width * height * 4);
         }
 
         queue.write_texture(

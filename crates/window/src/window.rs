@@ -3,7 +3,7 @@ use super::{WindowBackend, WindowEvent};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
-pub trait NativeWindow: HasWindowHandle + HasDisplayHandle + /* Send + Sync */ {
+pub(crate) trait NativeWindow: HasWindowHandle + HasDisplayHandle + /* Send + Sync */ {
     fn init() -> Self where Self: Sized;
     fn show(&mut self);
     fn focus(&mut self);
@@ -40,7 +40,7 @@ pub struct Window {
 
 impl Window {
     pub fn new(name: &str, width: u32, height: u32, resizeable: bool, backend: WindowBackend) -> Self {
-        println!("Creating window with backend: {:?}", backend);
+        log::info!("Creating window with backend: {:?}", backend);
         let mut window: Box<dyn NativeWindow> = match backend {
             WindowBackend::Glfw => {
                 use crate::backends::GlfwWindow;
@@ -65,7 +65,9 @@ impl Window {
 
         let scale = window.get_content_scale();
         let (fwidth, fheight) = window.get_size();
-        assert_eq!((fwidth, fheight), (width, height));
+        log::debug!("Content scale: {:?}", scale);
+        log::debug!("Window size: {}x{}", width, height);
+        log::debug!("Framebuffer size: {}x{}", fwidth, fheight);
 
         let focus = window.is_focused();
         return Self {
@@ -120,6 +122,10 @@ impl Window {
         let x = self.width as f32 * self.scale.0;
         let y = self.height as f32 * self.scale.1;
         return (x as i32, y as i32);
+    }
+
+    pub fn backend(&self) -> WindowBackend {
+        return self.backend;
     }
 
     pub fn should_close(&self) -> bool {

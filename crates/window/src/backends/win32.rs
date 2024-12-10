@@ -452,7 +452,7 @@ impl From<WPARAM> for Key {
             // VK_CONTROL is triggered by both LCONTROL and RCONTROL
             VK_CONTROL => Key::Other(VK_CONTROL as u32),
             _ => {
-                println!("Unknown key code: {}", key);
+                log::error!("Unknown key code: {}", key);
                 Key::Other(key as u32)
             },
         }

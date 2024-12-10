@@ -116,6 +116,9 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
 fn main() {
     // env_logger::init();
     // use winapi::um::winuser;
+    logger::init().unwrap();
+    logger::ignore_crate("wgpu");
+    logger::ignore_crate("wgpu_hal");
     // let old_hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |info| {
     //     println!("{:?}", info);
@@ -165,9 +168,10 @@ async fn wgpu_test() {
     dbg!(&shader);
 
     let mut camera = rend::Camera::new(&mut context, rend::CameraProjection::Perspective, CameraDescriptor {
-        aspect_ratio: (16 / 9) as f32,
+        aspect_ratio: window.get_aspect_ratio(),
         ..Default::default()
     });
+    let model = Model::from_path(&mut context, Some("Backpack"), "backpack/backpack.obj", Transform::default());
     let mut frame_bind = context.create_bind_group::<GlobalBindGroup>(None);
     let pipeline = context.device.create_render_pipeline(&wg::RenderPipelineDescriptor {
         label: Some("Render pipeline"),

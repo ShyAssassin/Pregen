@@ -33,8 +33,9 @@ impl RenderContext {
             flags: wgpu::InstanceFlags::DEBUG,
             gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
             // FIXME: this makes NSight crash because why not, cant use bitflags i guess
-            // backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
-            backends: wgpu::Backends::VULKAN,
+            // backends: wgpu::Backends::VULKAN,
+            // backends: wgpu::Backends::METAL,
+            backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
             dx12_shader_compiler: wgpu::Dx12Compiler::Dxc {
                 dxil_path: Some("bin/".into()),
                 dxc_path: Some("bin/".into())
@@ -53,7 +54,7 @@ impl RenderContext {
 
         let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Pregen Device"),
-            required_limits: wgpu::Limits{
+            required_limits: wgpu::Limits {
                 max_bind_groups: 4,
                 ..Default::default()
             },
@@ -99,7 +100,7 @@ impl RenderContext {
     pub fn create_shader(&mut self, path: impl Into<PathBuf>) -> Arc<Shader> {
         let path = path.into();
         return self.shaders.get(&path).cloned().unwrap_or_else(|| {
-            println!("Creating shader from {:?}", path);
+            log::info!("Creating shader from {:?}", path);
             let shader = Arc::new(Shader::new(&self.device, None, &path));
             self.shaders.insert(path.clone(), shader.clone());
             return shader;
@@ -113,7 +114,7 @@ impl RenderContext {
 
     pub fn create_sampler(&mut self, name: Option<&str>, mode: SamplerMode) -> Arc<Sampler> {
         return self.samplers.get(&mode).cloned().unwrap_or_else(|| {
-            println!("Creating sampler {:?}", mode);
+            log::info!("Creating sampler {:?}", mode);
             let sampler = Arc::new(Sampler::new(&self.device, name, mode));
             self.samplers.insert(mode, sampler.clone());
             return sampler;
@@ -132,7 +133,7 @@ impl RenderContext {
 
     pub fn create_bind_group_layout(&mut self, descriptor: wgpu::BindGroupLayoutDescriptor) -> Arc<wgpu::BindGroupLayout> {
         return self.bindgroup_layouts.get(descriptor.entries).cloned().unwrap_or_else(|| {
-            println!("Creating bind group layout for {:?}", descriptor.label);
+            log::info!("Creating bind group layout for {:?}", descriptor.label);
             let layout = Arc::new(self.device.create_bind_group_layout(&descriptor));
             self.bindgroup_layouts.insert(descriptor.entries.to_vec(), layout.clone());
             return layout;
