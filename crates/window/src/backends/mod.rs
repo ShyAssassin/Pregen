@@ -1,4 +1,6 @@
+#[cfg(not(target_family = "wasm"))]
 mod glfw;
+#[cfg(not(target_family = "wasm"))]
 pub use glfw::GlfwWindow;
 
 #[cfg(target_family = "wasm")]
@@ -21,6 +23,7 @@ pub use x11::X11Window;
 pub enum WindowBackend {
     Win32,
     Glfw,
+    Web,
     X11,
 }
 
@@ -35,6 +38,9 @@ impl WindowBackend {
 
         #[cfg(all(target_family = "unix", not(target_os = "macos")))]
         return WindowBackend::Glfw;
+
+        #[cfg(target_family = "wasm")]
+        return WindowBackend::Web;
 
         unreachable!("Compiler platform has no preferred window backend");
     }

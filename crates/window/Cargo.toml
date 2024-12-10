@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 log = { workspace = true }
 raw-window-handle = { workspace = true }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
 glfw = { version = "0.59.0", features = ["wayland"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]

@@ -42,6 +42,7 @@ impl Window {
     pub fn new(name: &str, width: u32, height: u32, resizeable: bool, backend: WindowBackend) -> Self {
         log::info!("Creating window with backend: {:?}", backend);
         let mut window: Box<dyn NativeWindow> = match backend {
+            #[cfg(not(target_family = "wasm"))]
             WindowBackend::Glfw => {
                 use crate::backends::GlfwWindow;
                 Box::new(GlfwWindow::init())
@@ -50,6 +51,11 @@ impl Window {
             WindowBackend::Win32 => {
                 use crate::backends::Win32Window;
                 Box::new(Win32Window::init())
+            },
+            #[cfg(target_family = "wasm")]
+            WindowBackend::Web => {
+                use crate::backends::WebWindow;
+                Box::new(WebWindow::init())
             },
             #[cfg(all(target_family = "unix", not(target_os = "macos")))]
             WindowBackend::X11 => {
