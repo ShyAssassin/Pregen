@@ -16,21 +16,22 @@ members = [
 log = { version = "0.4.22" }
 profiling = { version = "1.0.16" }
 raw-window-handle = { version = "0.6.2" }
+
 [dependencies]
 log = { workspace = true }
 tobj = { version = "4.0.2" }
 window = { path = "crates/window" }
 logger = { path = "crates/logger" }
 rand = { version = "0.8.5", features = ["getrandom"] }
-bytemuck = { version = "1.16.1", features = ["derive"] }
+bytemuck = { version = "1.20.0", features = ["derive"] }
 profiling = { workspace = true, features = ["procmacros"] }
-glam = { version = "0.29.0", features = ["bytemuck", "rand"] }
+glam = { version = "0.29.2", features = ["bytemuck", "rand"] }
 wgpu = { version = "23.0.1", features = ["vulkan-portability"] }
 futures-lite = {version = "2.3.0", default-features = false, features = ["std"]}
-image = { version = "0.25.2", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25.5", default-features = false, features = ["png", "jpeg"] }
 
 [build-dependencies]
-serde_json = {version = "1.0"}
+serde_json = {version = "1.0.133"}
 
 [lints.clippy]
 single_match = "allow"
