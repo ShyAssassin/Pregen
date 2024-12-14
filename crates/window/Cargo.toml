@@ -9,14 +9,14 @@ edition = "2021"
 log = { workspace = true }
 raw-window-handle = { workspace = true }
 
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-glfw = { version = "0.59.0", features = ["wayland"] }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-winapi = { version = "0.3.9", features = ["winuser", "winbase", "winerror", "errhandlingapi", "impl-default"] }
-
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = { version = "0.13.1" }
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+glfw = { version = "0.59.0", features = ["wayland"] }
+
 [target.'cfg(target_family = "wasm")'.dependencies]
-web-sys = { version = "0.3.76", features = ["HtmlCanvasElement"] }
+web-sys = { workspace = true, features = ["Window", "Document", "HtmlCanvasElement"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winapi = { version = "0.3.9", features = ["winuser", "winbase", "winerror", "errhandlingapi", "impl-default"] }
