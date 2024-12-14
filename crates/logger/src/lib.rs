@@ -42,7 +42,11 @@ impl Log for Logger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata())  {
-            println!("{}: {} - {}", self.color_level(record.level()), record.target(), record.args());
+            #[cfg(not(target_family = "wasm"))]
+            eprintln!("{}: {} - {}", self.color_level(record.level()), record.target(), record.args());
+
+            #[cfg(target_family = "wasm")]
+            web_sys::console::log_1(&format!("{}: {} - {}", record.level(), record.target(), record.args()).into());
         }
     }
 
