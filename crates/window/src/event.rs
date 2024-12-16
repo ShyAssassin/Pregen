@@ -70,8 +70,6 @@ pub enum MouseButton {
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum WindowEvent {
-    /// The window has been created.
-    Created,
 
     /// The window has gained focus.
     FocusGained,

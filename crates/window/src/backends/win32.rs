@@ -60,9 +60,6 @@ impl Win32Window {
                 let info = &*(l_param as *const CREATESTRUCTW);
                 let window_state_ptr = info.lpCreateParams as LONG_PTR;
                 SetWindowLongPtrW(hwnd, GWLP_USERDATA, window_state_ptr);
-                // TODO: probably a good idea to remove this deref + event
-                let state = &*(window_state_ptr as *const Win32WindowState);
-                state.events.lock().unwrap().push(WindowEvent::Created);
                 return LRESULT::from(0u8);
             }
 
