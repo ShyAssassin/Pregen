@@ -3,9 +3,7 @@ use crate::window::NativeWindow;
 use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, WindowHandle, HandleError};
 
 #[derive(Debug)]
-pub struct X11Window {
-
-}
+pub struct X11Window;
 
 impl NativeWindow for X11Window {
     fn init() -> Self {

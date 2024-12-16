@@ -117,10 +117,9 @@ impl Win32Window {
 
             WM_KEYDOWN | WM_KEYUP => {
                 let mut queue = state.events.lock().unwrap();
-                queue.push(WindowEvent::KeyboardInput);
                 let key = Key::from(w_param);
                 let is_pressed = Action::from(msg == WM_KEYDOWN);
-                queue.push(WindowEvent::KeyInput(key, w_param as u32, is_pressed));
+                queue.push(WindowEvent::KeyboardInput(key, w_param as u32, is_pressed));
                 return LRESULT::from(0u8);
             }
 
@@ -134,7 +133,6 @@ impl Win32Window {
             WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP | WM_MBUTTONDOWN | WM_MBUTTONUP => {
                 const DOWN_EVENTS: [UINT; 3] = [WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN];
                 let mut queue = state.events.lock().unwrap();
-                queue.push(WindowEvent::MouseInput);
                 let button = match msg {
                     WM_LBUTTONDOWN | WM_LBUTTONUP => MouseButton::Left,
                     WM_RBUTTONDOWN | WM_RBUTTONUP => MouseButton::Right,
@@ -184,6 +182,7 @@ impl NativeWindow for Win32Window {
                 lpszClassName: class_name.as_ptr(),
                 hCursor: LoadCursorW(null_mut(), IDC_ARROW),
                 hIcon: LoadIconW(null_mut(), IDI_APPLICATION),
+                // FIXME: this is to prevent flashbangs after creation, would be a better idea to paint black on WM_CREATE
                 hbrBackground: (COLOR_BACKGROUND + 1) as HBRUSH,
                 ..Default::default()
             };
@@ -429,23 +428,31 @@ impl HasDisplayHandle for Win32Window {
 
 impl From<WPARAM> for Key {
     fn from(key: WPARAM) -> Self {
-        let key = key as i32;
-        match key {
+        match key as i32 {
             65..=90 => Key::from_char((key as u8) as char), // A-Z
             48..=57 => Key::from_digit((key as u8) as char), // 0-9
 
+            // Function keys
             VK_F1 => Key::F1, VK_F2 => Key::F2, VK_F3 => Key::F3, VK_F4 => Key::F4,
             VK_F5 => Key::F5, VK_F6 => Key::F6, VK_F7 => Key::F7, VK_F8 => Key::F8,
             VK_F9 => Key::F9, VK_F10 => Key::F10, VK_F11 => Key::F11, VK_F12 => Key::F12,
 
+            // Modifier keys
+            VK_LMENU => Key::LAlt, VK_RMENU => Key::RAlt,
+            VK_LSHIFT => Key::LShift, VK_RSHIFT => Key::RShift,
+            VK_LCONTROL => Key::LCtrl, VK_RCONTROL => Key::RCtrl,
+
+            // Arrow keys
+            VK_LEFT => Key::Left, VK_UP => Key::Up, VK_RIGHT => Key::Right, VK_DOWN => Key::Down,
+
             VK_END => Key::End, VK_PRIOR => Key::PageUp, VK_NEXT => Key::PageDown,
             VK_INSERT => Key::Insert, VK_DELETE => Key::Delete, VK_HOME => Key::Home,
-            VK_LEFT => Key::Left, VK_UP => Key::Up, VK_RIGHT => Key::Right, VK_DOWN => Key::Down,
-            VK_LSHIFT => Key::LShift, VK_LCONTROL => Key::LCtrl, VK_RSHIFT => Key::RShift, VK_RCONTROL => Key::RCtrl,
             VK_SPACE => Key::Space, VK_RETURN => Key::Enter, VK_TAB => Key::Tab, VK_BACK => Key::Backspace, VK_ESCAPE => Key::Escape,
 
             189 => Key::Minus, 187 => Key::Equals, 219 => Key::LeftBracket, 221 => Key::RightBracket, 220 => Key::Backslash, 186 => Key::Semicolon,
 
+            // VK_MENU is triggered by both LMENU and RMENU
+            VK_MENU => Key::Other(VK_MENU as u32),
             // VK_SHIFT is triggered by both LSHIFT and RSHIFT
             VK_SHIFT => Key::Other(VK_SHIFT as u32),
             // VK_CONTROL is triggered by both LCONTROL and RCONTROL

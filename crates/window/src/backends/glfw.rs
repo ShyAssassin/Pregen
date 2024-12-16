@@ -82,7 +82,7 @@ impl NativeWindow for GlfwWindow {
                     events.push(WindowEvent::MouseButton(button.into(), action.into()));
                 }
                 GlfwWindowEvent::Key(key, code, action, _) => {
-                    events.push(WindowEvent::KeyInput(key.into(), code as u32, action.into()));
+                    events.push(WindowEvent::KeyboardInput(key.into(), code as u32, action.into()));
                 }
                 _ => {}
             }
@@ -173,7 +173,7 @@ impl From<glfw::Action> for Action {
 impl From<glfw::Key> for Key {
     fn from(key: glfw::Key) -> Key {
         return match key {
-            // TODO: use Key::from_char()
+            // A-Z
             glfw::Key::A => Key::A, glfw::Key::B => Key::B, glfw::Key::C => Key::C, glfw::Key::D => Key::D,
             glfw::Key::E => Key::E, glfw::Key::F => Key::F, glfw::Key::G => Key::G, glfw::Key::H => Key::H,
             glfw::Key::I => Key::I, glfw::Key::J => Key::J, glfw::Key::K => Key::K, glfw::Key::L => Key::L,
@@ -182,18 +182,23 @@ impl From<glfw::Key> for Key {
             glfw::Key::U => Key::U, glfw::Key::V => Key::V, glfw::Key::W => Key::W, glfw::Key::X => Key::X,
             glfw::Key::Y => Key::Y, glfw::Key::Z => Key::Z,
 
-            // TODO: use Key::from_digit()
+            // 0-9
             glfw::Key::Num0 => Key::Num0, glfw::Key::Num1 => Key::Num1, glfw::Key::Num2 => Key::Num2, glfw::Key::Num3 => Key::Num3,
             glfw::Key::Num4 => Key::Num4, glfw::Key::Num5 => Key::Num5, glfw::Key::Num6 => Key::Num6, glfw::Key::Num7 => Key::Num7,
             glfw::Key::Num8 => Key::Num8, glfw::Key::Num9 => Key::Num9,
 
+            // Function keys
             glfw::Key::F1 => Key::F1, glfw::Key::F2 => Key::F2, glfw::Key::F3 => Key::F3, glfw::Key::F4 => Key::F4,
             glfw::Key::F5 => Key::F5, glfw::Key::F6 => Key::F6, glfw::Key::F7 => Key::F7, glfw::Key::F8 => Key::F8,
             glfw::Key::F9 => Key::F9, glfw::Key::F10 => Key::F10, glfw::Key::F11 => Key::F11, glfw::Key::F12 => Key::F12,
 
-            glfw::Key::Left => Key::Left, glfw::Key::Right => Key::Right, glfw::Key::Up => Key::Up, glfw::Key::Down => Key::Down,
+            // Modifier keys
+            glfw::Key::LeftAlt => Key::LAlt, glfw::Key::RightAlt => Key::RAlt,
             glfw::Key::LeftShift => Key::LShift, glfw::Key::RightShift => Key::RShift,
             glfw::Key::LeftControl => Key::LCtrl, glfw::Key::RightControl => Key::RCtrl,
+
+            // Arrow keys
+            glfw::Key::Left => Key::Left, glfw::Key::Right => Key::Right, glfw::Key::Up => Key::Up, glfw::Key::Down => Key::Down,
 
             glfw::Key::Space => Key::Space, glfw::Key::Enter => Key::Enter, glfw::Key::Escape => Key::Escape,
             glfw::Key::Tab => Key::Tab, glfw::Key::Backspace => Key::Backspace, glfw::Key::Insert => Key::Insert,

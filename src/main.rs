@@ -13,6 +13,7 @@ use futures_lite::future::block_on;
 use rend::{CameraDescriptor, GlobalBindGroup, Model};
 use window::{Key, Action, Window, WindowBackend, WindowEvent};
 
+// FIXME: consider combining render textures with textures, or have a trait for anything with a view
 async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::RenderTexture) -> (wgpu::RenderPipeline, wgpu::BindGroup) {
     context.device.push_error_scope(wg::ErrorFilter::Validation);
     let shader = context.create_shader("shaders/post.wgsl");
@@ -114,14 +115,12 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
 }
 
 fn main() {
-    // env_logger::init();
-    // use winapi::um::winuser;
     logger::init().unwrap();
     logger::ignore_crate("wgpu");
     logger::ignore_crate("wgpu_hal");
     // let old_hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |info| {
-    //     println!("{:?}", info);
+    //     println!("{:?}", info.payload().downcast_ref::<&str>());
     //     std::io::stdin().read_line(&mut String::new()).unwrap();
     //     old_hook(info);
     // }));
@@ -138,7 +137,7 @@ fn window_test() {
                 WindowEvent::Resize { width, height } => {
                     println!("Resized to: {}x{}", width, height);
                 }
-                WindowEvent::KeyInput(key, scancode, action) => {
+                WindowEvent::KeyboardInput(key, scancode, action) => {
                     println!("Key: {:?} Scancode: {:?} Action: {:?}", key, scancode, action);
                 }
                 _ => {
@@ -153,10 +152,9 @@ fn window_test() {
 async fn wgpu_test() {
     let mut window = Window::new("Pregen: Runtime", 800, 800, true, WindowBackend::preferred());
     let mut context = gfx::RenderContext::new(&mut window).await;
-    let image = Arc::new(Image::from_raw(include_bytes!("test.jpg").to_vec(), 5));
-    let model = Model::from_path(&mut context, Some("Backpack"), "backpack/backpack.obj", Transform::default());
     let mut target = context.create_render_target(Some("Test Target"), gfx::SamplerMode::CLAMP, context.config.width, context.config.height);
     dbg!(&target);
+    let image = Arc::new(Image::from_raw(include_bytes!("test.jpg").to_vec(), 5));
     let texture = context.create_texture(Some("Test Texture"), gfx::SamplerMode::REPEAT, gfx::TextureFormat::Rgba8Unorm, image);
     dbg!(&texture);
     let mut depth_texture = context.create_depth_texture(Some("Depth Texture"), gfx::SamplerMode::CLAMP, context.config.width, context.config.height);
@@ -244,17 +242,17 @@ async fn wgpu_test() {
                     if (width, height) != (0, 0) {
                         context.config.width = width;
                         context.config.height = height;
-                        camera.aspect_ratio = width as f32 / height as f32;
+                        camera.aspect_ratio = window.get_aspect_ratio();
                         context.surface.configure(&context.device, &context.config);
                         target.resize(&context.device, context.config.width, context.config.height);
                         depth_texture.resize(&context.device, context.config.width, context.config.height);
                         (post_pipeline, post_bind_group) = create_post_pipeline(&mut context, &target).await;
                     }
                 }
-                WindowEvent::KeyInput(Key::Escape, _, Action::Pressed) => {
+                WindowEvent::KeyboardInput(Key::Escape, _, Action::Pressed) => {
                     window.set_should_close(true);
                 }
-                WindowEvent::KeyInput(Key::Space, _, Action::Pressed) => {
+                WindowEvent::KeyboardInput(Key::Space, _, Action::Pressed) => {
                     shader.reload(&context.device);
                     match camera.projection {
                         rend::CameraProjection::Perspective => {
@@ -265,10 +263,10 @@ async fn wgpu_test() {
                         }
                     }
                 }
-                WindowEvent::KeyInput(Key::Minus, _, Action::Pressed) => {
+                WindowEvent::KeyboardInput(Key::Minus, _, Action::Pressed) => {
                     camera.fov -= 1.0;
                 }
-                WindowEvent::KeyInput(Key::Equals, _, Action::Pressed) => {
+                WindowEvent::KeyboardInput(Key::Equals, _, Action::Pressed) => {
                     camera.fov += 1.0;
                 }
                 _ => {

@@ -22,11 +22,11 @@ impl From<bool> for Action {
 pub enum Key {
     // Arrow keys
     Left, Right, Up, Down,
-    // Modifier keys
-    LShift, RShift, LCtrl, RCtrl,
     // ASCII keys
     A, B, C, D, E, F, G, H, I, J, K, L, M,
     N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+    // Modifier keys
+    LShift, RShift, LCtrl, RCtrl, LAlt, RAlt,
     // Function keys
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
     // Numbers
@@ -70,33 +70,23 @@ pub enum MouseButton {
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum WindowEvent {
-
-    /// The window has gained focus.
-    FocusGained,
-
-    // The window has lost focus.
-    FocusLost,
-
+    /// The window has been asked closed.
+    CloseRequested,
     /// The window has been forcfully closed
     Destroyed,
 
-    /// The window has been asked closed.
-    CloseRequested,
+    // The window has lost focus.
+    FocusLost,
+    /// The window has gained focus.
+    FocusGained,
 
     // The window has been minimized.
     Minimized,
-
     // The window has maximized.
     Maximized,
 
-    /// General event for all types of keyboard input.
-    KeyboardInput,
-
     /// The user has pressed a key while within the window.
-    KeyInput(Key, u32, Action),
-
-    /// General event for all types of mouse input.
-    MouseInput,
+    KeyboardInput(Key, u32, Action),
 
     /// A Mouse button has been pressed.
     MouseButton(MouseButton, Action),
@@ -121,6 +111,7 @@ pub enum WindowEvent {
 }
 
 impl WindowEvent {
+    // FIXME: in a perfect world this would be static
     pub fn id(&self) -> u64 {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         std::mem::discriminant(self).hash(&mut hasher);
