@@ -57,7 +57,7 @@ impl Window {
                 use crate::backends::WebWindow;
                 Box::new(WebWindow::init())
             },
-            #[cfg(all(target_family = "unix", not(target_os = "macos")))]
+            #[cfg(target_os = "linux")]
             WindowBackend::X11 => {
                 use crate::backends::X11Window;
                 Box::new(X11Window::init())

@@ -3,19 +3,19 @@ mod glfw;
 #[cfg(not(target_family = "wasm"))]
 pub use glfw::GlfwWindow;
 
-#[cfg(target_family = "wasm")]
-mod web;
-#[cfg(target_family = "wasm")]
-pub use web::WebWindow;
-
 #[cfg(target_family = "windows")]
 mod win32;
 #[cfg(target_family = "windows")]
 pub use win32::Win32Window;
 
-#[cfg(all(target_family = "unix", not(target_os = "macos")))]
+#[cfg(target_family = "wasm")]
+mod web;
+#[cfg(target_family = "wasm")]
+pub use web::WebWindow;
+
+#[cfg(target_os = "linux")]
 mod x11;
-#[cfg(all(target_family = "unix", not(target_os = "macos")))]
+#[cfg(target_os = "linux")]
 pub use x11::X11Window;
 
 #[derive(Debug, Clone, Copy)]
