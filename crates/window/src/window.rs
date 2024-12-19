@@ -3,7 +3,7 @@ use super::{WindowBackend, WindowEvent};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
-pub(crate) trait NativeWindow: HasWindowHandle + HasDisplayHandle + /* Send + Sync */ {
+pub(crate) trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     fn init() -> Self where Self: Sized;
     fn show(&mut self);
     fn focus(&mut self);
@@ -128,6 +128,17 @@ impl Window {
         let x = self.width as f32 * self.scale.0;
         let y = self.height as f32 * self.scale.1;
         return (x as i32, y as i32);
+    }
+
+    #[cfg(target_family = "wasm")]
+    pub fn canvas(&self) -> web_sys::HtmlCanvasElement {
+        use std::any::Any;
+        use crate::backends::WebWindow;
+
+        // some sketchy stuff right here
+        let window: &dyn Any = &self.window;
+        assert_eq!(self.backend, WindowBackend::Web);
+        return window.downcast_ref::<WebWindow>().unwrap().canvas.clone();
     }
 
     pub fn backend(&self) -> WindowBackend {

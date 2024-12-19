@@ -33,14 +33,14 @@ impl WindowBackend {
         #[cfg(target_family = "windows")]
         return WindowBackend::Win32;
 
-        #[cfg(target_os = "macos")]
-        return WindowBackend::Glfw;
-
-        #[cfg(all(target_family = "unix", not(target_os = "macos")))]
-        return WindowBackend::Glfw;
-
         #[cfg(target_family = "wasm")]
         return WindowBackend::Web;
+
+        #[cfg(target_os = "linux")]
+        return WindowBackend::Glfw;
+
+        #[cfg(target_os = "macos")]
+        return WindowBackend::Glfw;
 
         unreachable!("Compiler platform has no preferred window backend");
     }
