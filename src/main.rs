@@ -4,6 +4,7 @@ mod math;
 mod asset;
 mod macros;
 
+use log::Level;
 use wgpu as wg;
 use asset::Image;
 use std::sync::Arc;
@@ -116,8 +117,8 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
 
 fn main() {
     logger::init().unwrap();
-    logger::ignore_crate("wgpu");
-    logger::ignore_crate("wgpu_hal");
+    logger::set_crate_log("wgpu", Level::Warn);
+    logger::set_crate_log("wgpu_hal", Level::Warn);
     // let old_hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |info| {
     //     println!("{:?}", info.payload().downcast_ref::<&str>());
@@ -164,7 +165,6 @@ async fn wgpu_test() {
 
     let shader = context.create_shader("shaders/default.wgsl");
     dbg!(&shader);
-
     let mut camera = rend::Camera::new(&mut context, rend::CameraProjection::Perspective, CameraDescriptor {
         aspect_ratio: window.get_aspect_ratio(),
         ..Default::default()

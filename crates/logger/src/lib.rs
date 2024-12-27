@@ -1,27 +1,27 @@
-use std::sync::{OnceLock, RwLock};
+use std::sync::{OnceLock, Mutex};
 use colored::{ColoredString, Colorize};
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 
 pub struct Logger {
-    pub log_level: RwLock<Level>,
-    pub ignored_crates: RwLock<Vec<String>>,
+    pub log_level: Mutex<Level>,
+    pub crate_levels: Mutex<Vec<(String, Level)>>,
 }
 
 static LOGGER: OnceLock<Logger> = OnceLock::new();
 
 impl Logger {
-    pub fn new(level: Level, ignore: Vec<String>) -> Logger {
+    pub fn new(level: Level) -> Logger {
         Logger {
-            log_level: RwLock::new(level),
-            ignored_crates: RwLock::new(ignore),
+            log_level: Mutex::new(level),
+            crate_levels: Mutex::new(Vec::new()),
         }
     }
 
     pub fn set_level(&self, level: Level) {
-        *self.log_level.write().unwrap() = level;
+        *self.log_level.lock().unwrap() = level;
     }
 
-    pub fn color_level(&self, level: Level) -> ColoredString {
+    pub fn colorize(&self, level: Level) -> ColoredString {
         match level {
             Level::Error => level.as_str().red(),
             Level::Warn => level.as_str().yellow(),
@@ -34,16 +34,23 @@ impl Logger {
 
 impl Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
+        let log_level = *self.log_level.lock().unwrap();
+        let crate_levels = self.crate_levels.lock().unwrap();
         let crate_name = metadata.target().split("::").next().unwrap();
-        let log_level = metadata.level() <= *self.log_level.read().unwrap();
-        let ignored = self.ignored_crates.read().unwrap().contains(&crate_name.to_string());
-        return log_level && !ignored;
+        // FIXME: depending on order added crate-thing::module may inherit the level of crate-thing
+            for (name, level) in crate_levels.iter() {
+            if crate_name.starts_with(name) {
+                return metadata.level() <= *level;
+            }
+        }
+
+        return metadata.level() <= log_level;
     }
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata())  {
             #[cfg(not(target_family = "wasm"))]
-            eprintln!("{}: {} - {}", self.color_level(record.level()), record.target(), record.args());
+            eprintln!("{}: {} - {}", self.colorize(record.level()), record.target(), record.args());
 
             #[cfg(target_family = "wasm")]
             web_sys::console::log_1(&format!("{}: {} - {}", record.level(), record.target(), record.args()).into());
@@ -56,14 +63,10 @@ impl Log for Logger {
 pub fn init() -> Result<(), SetLoggerError> {
     let logger = LOGGER.get_or_init(|| {
         let env_level = std::env::var("RUST_LOG").unwrap_or("info".to_string());
-        let env_ignore = std::env::var("RUST_LOG_IGNORE").unwrap_or("".to_string());
-        let ignores: Vec<String> = env_ignore.split(",").map(|s| s.to_string()).collect();
         let level = env_level.parse().unwrap_or(Level::Info);
-        return Logger::new(level, ignores);
+        return Logger::new(level);
     });
     let res = log::set_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Trace));
-    log::info!("Logger initialized with level: {:?}", logger.log_level.read().unwrap());
-    log::info!("Crates ignored from CLI input: {:?}", logger.ignored_crates.read().unwrap());
 
     let prev_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -78,11 +81,8 @@ pub fn set_level(level: Level) {
     LOGGER.get().unwrap().set_level(level);
 }
 
-pub fn ignore_crate(target: &str) {
-    // TODO: it would be nice to ignore crates at certain log levels
-    // For example to only print errors from certain crates
-    log::info!("Ignoring logs from crate: {}", target);
-    LOGGER.get().unwrap().ignored_crates.write().unwrap().push(target.to_string());
+pub fn set_crate_log(target: &str, level: Level) {
+    LOGGER.get().unwrap().crate_levels.lock().unwrap().push((target.to_string(), level));
 }
 
 pub fn get_raw_logger() -> &'static Logger {
