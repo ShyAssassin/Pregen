@@ -70,7 +70,9 @@ pub fn init() -> Result<(), SetLoggerError> {
 
     let prev_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        panic_handler(info);
+        let payload = info.payload().downcast_ref::<&str>().unwrap_or(&"Unknown panic payload");
+        let location = info.location().map_or("Unknown location".to_string(), |loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()));
+        log::error!("Panic occurred at: \n\t\t{}: {}", location.red(), payload.red());
         prev_hook(info);
     }));
     log::info!("Panic handler set");
@@ -87,8 +89,4 @@ pub fn set_crate_log(target: &str, level: Level) {
 
 pub fn get_raw_logger() -> &'static Logger {
     return LOGGER.get().unwrap();
-}
-
-fn panic_handler(info: &std::panic::PanicHookInfo) {
-    log::error!("Panic occurred: {:?}", info.payload());
 }
