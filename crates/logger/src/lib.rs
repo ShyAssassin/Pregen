@@ -37,8 +37,8 @@ impl Log for Logger {
         let log_level = *self.log_level.lock().unwrap();
         let crate_levels = self.crate_levels.lock().unwrap();
         let crate_name = metadata.target().split("::").next().unwrap();
-        // FIXME: depending on order added crate-thing::module may inherit the level of crate-thing
-            for (name, level) in crate_levels.iter() {
+        // FIXME: depending on order added crate::module may inherit the level of crate
+        for (name, level) in crate_levels.iter() {
             if crate_name.starts_with(name) {
                 return metadata.level() <= *level;
             }
@@ -66,17 +66,22 @@ pub fn init() -> Result<(), SetLoggerError> {
         let level = env_level.parse().unwrap_or(Level::Info);
         return Logger::new(level);
     });
-    let res = log::set_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Trace));
 
-    let prev_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        let payload = info.payload().downcast_ref::<&str>().unwrap_or(&"Unknown panic payload");
-        let location = info.location().map_or("Unknown location".to_string(), |loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()));
-        log::error!("Panic occurred at: \n\t\t{}: {}", location.red(), payload.red());
-        prev_hook(info);
+        let location = info.location().map_or("Unknown location".to_string(), |p| format!("{}:{}:{}", p.file(), p.line(), p.column()));
+        let payload = info.payload().downcast_ref::<String>().map(|s| s.clone()).unwrap_or_else(|| {
+            info.payload().downcast_ref::<&str>().unwrap_or(&"Unknown Payload").to_string()
+        });
+
+        let trace = match std::env::var("RUST_BACKTRACE") {
+            Ok(_) => std::backtrace::Backtrace::force_capture().to_string(),
+            Err(_) => "  Run with RUST_BACKTRACE=1 environment variable to display backtrace".to_string(),
+        };
+        let trace = trace.lines().map(|line| format!("\t\t|{}", line)).collect::<Vec<_>>().join("\n");
+        log::error!("Panic occurred at: {}\n\t\t-----------------> {}\n{}", location.black(), payload.bright_red(), trace);
     }));
-    log::info!("Panic handler set");
-    return res;
+
+    return log::set_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Trace));
 }
 
 pub fn set_level(level: Level) {
