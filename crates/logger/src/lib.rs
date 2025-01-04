@@ -1,4 +1,4 @@
-use std::sync::{OnceLock, Mutex};
+use std::sync::{Mutex, OnceLock};
 use colored::{ColoredString, Colorize};
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 
@@ -39,7 +39,7 @@ impl Log for Logger {
         let crate_name = metadata.target().split("::").next().unwrap();
         // FIXME: depending on order added crate::module may inherit the level of crate
         for (name, level) in crate_levels.iter() {
-            if crate_name.starts_with(name) {
+            if crate_name == name {
                 return metadata.level() <= *level;
             }
         }
@@ -72,6 +72,15 @@ pub fn init() -> Result<(), SetLoggerError> {
         let payload = info.payload().downcast_ref::<String>().map(|s| s.clone()).unwrap_or_else(|| {
             info.payload().downcast_ref::<&str>().unwrap_or(&"Unknown Payload").to_string()
         });
+        // This treats newlines as a pseudo "stack trace" for the panic
+        let payload = payload.lines().enumerate()
+            .map(|(i, line)| match (i, line.trim().is_empty()) {
+                (_, true) => String::new(),
+                (0, _) => format!("{}", line),
+                _ => format!("\t\t||  {}", line),
+            })
+            .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>().join("\n");
 
         let trace = match std::env::var("RUST_BACKTRACE") {
             Ok(_) => std::backtrace::Backtrace::force_capture().to_string(),

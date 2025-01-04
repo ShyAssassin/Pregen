@@ -118,35 +118,11 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
 fn main() {
     logger::init().unwrap();
     logger::set_crate_log("wgpu", Level::Warn);
+    logger::set_crate_log("naga", Level::Error);
     logger::set_crate_log("wgpu_hal", Level::Warn);
-    // let old_hook = std::panic::take_hook();
-    // std::panic::set_hook(Box::new(move |info| {
-    //     println!("{:?}", info.payload().downcast_ref::<&str>());
-    //     std::io::stdin().read_line(&mut String::new()).unwrap();
-    //     old_hook(info);
-    // }));
-    // panic!("nya~");
+    logger::set_crate_log("wgpu_core", Level::Warn);
+
     block_on(wgpu_test());
-}
-
-fn window_test() {
-    let mut window = Window::new("Pregen: Runtime", 800, 800, true, WindowBackend::preferred());
-
-    while !window.should_close() {
-        for event in window.poll() {
-            match event {
-                WindowEvent::Resize { width, height } => {
-                    println!("Resized to: {}x{}", width, height);
-                }
-                WindowEvent::KeyboardInput(key, scancode, action) => {
-                    println!("Key: {:?} Scancode: {:?} Action: {:?}", key, scancode, action);
-                }
-                _ => {
-                    println!("{:?}", event);
-                }
-            }
-        }
-    }
 }
 
 // TODO: not this make abstraction
