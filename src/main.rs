@@ -16,10 +16,7 @@ use window::{Key, Action, Window, WindowBackend, WindowEvent};
 
 // FIXME: consider combining render textures with textures, or have a trait for anything with a view
 async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::RenderTexture) -> (wgpu::RenderPipeline, wgpu::BindGroup) {
-    context.device.push_error_scope(wg::ErrorFilter::Validation);
     let shader = context.create_shader("shaders/post.wgsl");
-    let pap = context.device.pop_error_scope().await;
-    dbg!(&pap);
 
     let layout = context.device.create_bind_group_layout(&wg::BindGroupLayoutDescriptor {
         label: Some("Post Bind Group Layout"),

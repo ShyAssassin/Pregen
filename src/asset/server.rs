@@ -1,6 +1,6 @@
 use super::Image;
-use std::path::PathBuf;
 use std::sync::Arc;
+use std::path::PathBuf;
 use std::collections::HashMap;
 
 pub struct AssetServer {

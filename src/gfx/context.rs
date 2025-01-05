@@ -6,10 +6,10 @@ use wgpu::SurfaceTargetUnsafe;
 use window::Window;
 use crate::asset::Image;
 use std::collections::HashMap;
-use super::{BindGroup, BindGroupState, PipelineDescriptor};
-use super::{RenderTargetFormat, TextureFormat};
 use super::{RenderTexture, Texture};
+use super::{RenderTargetFormat, TextureFormat};
 use super::{RenderPipeline, Sampler, SamplerMode, Shader};
+use super::{BindGroup, BindGroupState, PipelineDescriptor};
 
 #[derive(Debug)]
 pub struct RenderContext {
@@ -32,9 +32,9 @@ impl RenderContext {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             flags: wgpu::InstanceFlags::DEBUG,
             gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
-            // FIXME: this makes NSight crash because why not, cant use bitflags i guess
-            // backends: wgpu::Backends::VULKAN,
             // backends: wgpu::Backends::METAL,
+            // backends: wgpu::Backends::VULKAN,
+            // FIXME: this makes NSight crash because why not, cant use bitflags i guess
             backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
             dx12_shader_compiler: wgpu::Dx12Compiler::Dxc {
                 dxil_path: Some("bin/".into()),

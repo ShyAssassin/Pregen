@@ -1,5 +1,6 @@
 use std::{fmt::Debug, ops::RangeBounds};
 use bytemuck::{Pod, Zeroable};
+
 pub trait VertexArrayObject: where Self: Pod + Zeroable {
     const SIZE: usize = size_of::<Self>();
     const VERTEX_BUFFER_LAYOUT: wgpu::VertexBufferLayout<'static>;

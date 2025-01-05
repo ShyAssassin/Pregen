@@ -20,25 +20,27 @@ impl Image {
     }
 
     pub fn from_raw(data: Vec<u8>, mip_levels: u32) -> Self {
-        println!("Loading image");
-        let image = image::load_from_memory(&data).unwrap_or_else(|_|  {
-            println!("Unknown image format, trying TGA");
+        log::debug!("Loading image");
+        let mut image = image::load_from_memory(&data).unwrap_or_else(|_|  {
+            log::warn!("Unknown image format, trying TGA");
             image::load_from_memory_with_format(&data, image::ImageFormat::Tga).expect("Unknown image format")
         });
 
-        println!("Generating mipmaps");
         let mut levels = Vec::new();
+        log::debug!("Generating mipmaps");
         // FIXME: sometimes data.len() != width * height * 4
+        let width = image.width();
+        let height = image.height();
         for level in 0..mip_levels {
-            let data = image.clone().resize(
-                image.width() >> level,
-                image.height() >> level,
+            image = image.resize(
+                width >> level,
+                height >> level,
                 image::imageops::FilterType::Triangle,
-            ).to_rgba8();
-            levels.push(data.to_vec());
+            );
+            levels.push(image.to_rgba8().to_vec());
+            log::debug!("Resizing: {:?}", ((width >> level),(height >> level)));
         };
-        dbg!("Image loaded");
-        return Self::new(image.width(), image.height(), mip_levels, levels, None);
+        return Self::new(width, height, mip_levels, levels, None);
     }
 
     pub fn from_path(path: &PathBuf, mip_levels: u32) -> Self {

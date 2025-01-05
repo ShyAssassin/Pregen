@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 #[derive(Debug, Clone, Copy)]
 #[derive(Hash, Eq, PartialEq)]
 pub struct SamplerMode {
@@ -61,7 +59,7 @@ impl Sampler {
     }
 }
 
-impl Debug for Sampler {
+impl std::fmt::Debug for Sampler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Sampler")
             .field("name", &self.name)
