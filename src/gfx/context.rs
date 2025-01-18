@@ -29,16 +29,18 @@ pub struct RenderContext {
 #[profiling::all_functions]
 impl RenderContext {
     pub async fn new(window: &mut Window) -> Self {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             flags: wgpu::InstanceFlags::DEBUG,
-            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
-            // backends: wgpu::Backends::METAL,
-            // backends: wgpu::Backends::VULKAN,
             // FIXME: this makes NSight crash because why not, cant use bitflags i guess
             backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
-            dx12_shader_compiler: wgpu::Dx12Compiler::Dxc {
-                dxil_path: Some("bin/".into()),
-                dxc_path: Some("bin/".into())
+            backend_options: wgpu::BackendOptions {
+                dx12: wgpu::Dx12BackendOptions {
+                    shader_compiler: wgpu::Dx12Compiler::DynamicDxc {
+                        dxil_path: "bin/".into(),
+                        dxc_path: "bin/".into()
+                    }
+                },
+                ..Default::default()
             }
         });
 
@@ -46,6 +48,7 @@ impl RenderContext {
             let surface = SurfaceTargetUnsafe::from_window(window).unwrap();
             instance.create_surface_unsafe(surface).unwrap()
         };
+
         let adapter = instance.request_adapter(&wgpu::RequestAdapterOptionsBase {
             force_fallback_adapter: false,
             compatible_surface: Some(&surface),

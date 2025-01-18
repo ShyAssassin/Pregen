@@ -66,14 +66,14 @@ impl Texture {
         }
 
         queue.write_texture(
-            wgpu::ImageCopyTextureBase {
+            wgpu::TexelCopyTextureInfo {
                 mip_level: level,
                 texture: texture,
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
             &data,
-            wgpu::ImageDataLayout {
+            wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 rows_per_image: Some(height),
                 // 4 bytes per pixel to store RGBA
