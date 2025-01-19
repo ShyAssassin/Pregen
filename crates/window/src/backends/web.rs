@@ -1,6 +1,8 @@
 use std::ptr::NonNull;
 use crate::WindowEvent;
+use std::sync::{Arc, Mutex};
 use crate::window::NativeWindow;
+use web_sys::wasm_bindgen::prelude::*;
 use web_sys::wasm_bindgen::{JsCast, JsValue};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{WebCanvasWindowHandle, RawWindowHandle};
@@ -11,19 +13,65 @@ pub struct WebWindow {
     pub window: web_sys::Window,
     pub document: web_sys::Document,
     pub canvas: web_sys::HtmlCanvasElement,
+    pub events: Arc<Mutex<Vec<WindowEvent>>>,
 }
 
 impl NativeWindow for WebWindow {
     fn init() -> Self {
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();
+        let events = Arc::new(Mutex::new(Vec::new()));
         // FIXME: hard coding this is bad, should be user defined and passed in, add a window hint?
-        let canvas = document.get_element_by_id("surface").unwrap();
+        let canvas = document.get_element_by_id("view").unwrap();
         let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+
+        // FIXME: calling .forget() on the closures will memory leak, need to store them somewhere
+        let key_up = Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {
+            log::info!("Key up event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onkeyup(Some(key_up.as_ref().unchecked_ref()));
+        key_up.forget();
+
+        let key_down = Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {
+            log::info!("Key down event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onkeydown(Some(key_down.as_ref().unchecked_ref()));
+        key_down.forget();
+
+        let mouse_down = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
+            log::info!("Mouse down event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onmousedown(Some(mouse_down.as_ref().unchecked_ref()));
+        mouse_down.forget();
+
+        let mouse_up = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
+            log::info!("Mouse up event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onmouseup(Some(mouse_up.as_ref().unchecked_ref()));
+        mouse_up.forget();
+
+        let blur = Closure::wrap(Box::new(move |event: web_sys::FocusEvent| {
+            log::info!("Blur event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onblur(Some(blur.as_ref().unchecked_ref()));
+        blur.forget();
+
+        let focus = Closure::wrap(Box::new(move |event: web_sys::FocusEvent| {
+            log::info!("Focus event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onfocus(Some(focus.as_ref().unchecked_ref()));
+        focus.forget();
+
+        let resize = Closure::wrap(Box::new(move |event: web_sys::UiEvent| {
+            log::info!("Resize event: {:?}", event);
+        }) as Box<dyn FnMut(_)>);
+        canvas.set_onresize(Some(resize.as_ref().unchecked_ref()));
+        resize.forget();
 
         return Self {
             window: window,
             canvas: canvas,
+            events: events,
             document: document,
         };
     }
@@ -43,7 +91,7 @@ impl NativeWindow for WebWindow {
     }
 
     fn shutdown(&mut self) {
-        todo!()
+        // We *probably* don't need to do anything here...
     }
 
     fn is_focused(&self) -> bool {
@@ -57,7 +105,10 @@ impl NativeWindow for WebWindow {
     }
 
     fn poll(&mut self) -> Vec<WindowEvent> {
-        todo!("We first need to add event listeners to the canvas");
+        // FIXME: to not block the main thread we need to use either a web worker or put everything in `requestAnimationFrame` closure
+        // Potentially we could make the thread async sleep for a bit to not block the main thread
+        // We could also use `setInterval` / `setTimeout` but that would probably be a bad idea
+        return Vec::new();
     }
 
     fn resize(&mut self, width: u32, height: u32) {

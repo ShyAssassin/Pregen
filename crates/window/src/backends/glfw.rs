@@ -191,6 +191,9 @@ impl From<glfw::Key> for Key {
             glfw::Key::F1 => Key::F1, glfw::Key::F2 => Key::F2, glfw::Key::F3 => Key::F3, glfw::Key::F4 => Key::F4,
             glfw::Key::F5 => Key::F5, glfw::Key::F6 => Key::F6, glfw::Key::F7 => Key::F7, glfw::Key::F8 => Key::F8,
             glfw::Key::F9 => Key::F9, glfw::Key::F10 => Key::F10, glfw::Key::F11 => Key::F11, glfw::Key::F12 => Key::F12,
+            glfw::Key::F13 => Key::F13, glfw::Key::F14 => Key::F14, glfw::Key::F15 => Key::F15, glfw::Key::F16 => Key::F16,
+            glfw::Key::F17 => Key::F17, glfw::Key::F18 => Key::F18, glfw::Key::F19 => Key::F19, glfw::Key::F20 => Key::F20,
+            glfw::Key::F21 => Key::F21, glfw::Key::F22 => Key::F22, glfw::Key::F23 => Key::F23, glfw::Key::F24 => Key::F24,
 
             // Modifier keys
             glfw::Key::LeftAlt => Key::LAlt, glfw::Key::RightAlt => Key::RAlt,
@@ -200,9 +203,9 @@ impl From<glfw::Key> for Key {
             // Arrow keys
             glfw::Key::Left => Key::Left, glfw::Key::Right => Key::Right, glfw::Key::Up => Key::Up, glfw::Key::Down => Key::Down,
 
+            glfw::Key::Delete => Key::Delete, glfw::Key::Home => Key::Home, glfw::Key::End => Key::End,
             glfw::Key::Space => Key::Space, glfw::Key::Enter => Key::Enter, glfw::Key::Escape => Key::Escape,
             glfw::Key::Tab => Key::Tab, glfw::Key::Backspace => Key::Backspace, glfw::Key::Insert => Key::Insert,
-            glfw::Key::Delete => Key::Delete, glfw::Key::Home => Key::Home, glfw::Key::End => Key::End,
             glfw::Key::PageUp => Key::PageUp, glfw::Key::PageDown => Key::PageDown, glfw::Key::Minus => Key::Minus,
             glfw::Key::Equal => Key::Equals, glfw::Key::LeftBracket => Key::LeftBracket, glfw::Key::RightBracket => Key::RightBracket,
             _ => {

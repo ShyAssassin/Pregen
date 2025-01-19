@@ -74,8 +74,8 @@ impl Win32Window {
             }
 
             WM_SETCURSOR => {
-                // The cursor will be changed by windows itself when outside client area
-                // When going back into the client area we just put it back to the previous state
+                // The cursor will be changed by windows itself when outside the client area
+                // When going back into the client area we just put the cursor back to the previous state
                 if LOWORD(l_param as u32) == HTCLIENT as u16 {
                     if !(*state.cursor_visible.lock().unwrap()) {
                         SetCursor(null_mut());
@@ -88,7 +88,8 @@ impl Win32Window {
 
             WM_DPICHANGED => {
                 let rect = &*(l_param as PRECTL);
-                SetWindowPos(hwnd, null_mut(), // This should call WM_SIZE?
+                // Resize based on lParam suggestions to maintain scale
+                SetWindowPos(hwnd, null_mut(), // This should emit WM_SIZE?
                     rect.left, rect.top,
                     rect.right - rect.left,
                     rect.bottom - rect.top,
@@ -436,6 +437,9 @@ impl From<WPARAM> for Key {
             VK_F1 => Key::F1, VK_F2 => Key::F2, VK_F3 => Key::F3, VK_F4 => Key::F4,
             VK_F5 => Key::F5, VK_F6 => Key::F6, VK_F7 => Key::F7, VK_F8 => Key::F8,
             VK_F9 => Key::F9, VK_F10 => Key::F10, VK_F11 => Key::F11, VK_F12 => Key::F12,
+            VK_F13 => Key::F13, VK_F14 => Key::F14, VK_F15 => Key::F15, VK_F16 => Key::F16,
+            VK_F17 => Key::F17, VK_F18 => Key::F18, VK_F19 => Key::F19, VK_F20 => Key::F20,
+            VK_F21 => Key::F21, VK_F22 => Key::F22, VK_F23 => Key::F23, VK_F24 => Key::F24,
 
             // Modifier keys
             VK_LMENU => Key::LAlt, VK_RMENU => Key::RAlt,
@@ -445,11 +449,12 @@ impl From<WPARAM> for Key {
             // Arrow keys
             VK_LEFT => Key::Left, VK_UP => Key::Up, VK_RIGHT => Key::Right, VK_DOWN => Key::Down,
 
-            VK_END => Key::End, VK_PRIOR => Key::PageUp, VK_NEXT => Key::PageDown,
-            VK_INSERT => Key::Insert, VK_DELETE => Key::Delete, VK_HOME => Key::Home,
+            VK_END => Key::End, VK_PRIOR => Key::PageUp, VK_NEXT => Key::PageDown, VK_OEM_PLUS => Key::Equals,
+            VK_INSERT => Key::Insert, VK_DELETE => Key::Delete, VK_HOME => Key::Home, VK_OEM_MINUS => Key::Minus,
             VK_SPACE => Key::Space, VK_RETURN => Key::Enter, VK_TAB => Key::Tab, VK_BACK => Key::Backspace, VK_ESCAPE => Key::Escape,
 
-            189 => Key::Minus, 187 => Key::Equals, 219 => Key::LeftBracket, 221 => Key::RightBracket, 220 => Key::Backslash, 186 => Key::Semicolon,
+            // FIXME: determine if this is layout dependent
+            219 => Key::LeftBracket, 221 => Key::RightBracket, 220 => Key::Backslash, 186 => Key::Semicolon,
 
             // VK_MENU is triggered by both LMENU and RMENU
             VK_MENU => Key::Other(VK_MENU as u32),

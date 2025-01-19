@@ -29,6 +29,7 @@ pub enum Key {
     LShift, RShift, LCtrl, RCtrl, LAlt, RAlt,
     // Function keys
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
+    F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24,
     // Numbers
     Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
     // "Action" keys
@@ -72,7 +73,7 @@ pub enum MouseButton {
 pub enum WindowEvent {
     /// The window has been asked closed.
     CloseRequested,
-    /// The window has been forcfully closed
+    /// The window has been forcefully closed
     Destroyed,
 
     // The window has lost focus.
@@ -86,6 +87,7 @@ pub enum WindowEvent {
     Maximized,
 
     /// The user has pressed a key while within the window.
+    // TODO: check for modifier keys, could maybe be done in the platform independent layer?
     KeyboardInput(Key, u32, Action),
 
     /// A Mouse button has been pressed.
