@@ -31,7 +31,7 @@
           shellHook = ''
             rustup default stable
             rustup component add rust-src rust-analyzer
-            # Add build inputs to the LD_LIBRARY_PATH
+            cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.8.1 wgsl_analyzer
             export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
           '';
         };
