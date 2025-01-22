@@ -22,6 +22,7 @@ raw-window-handle = { version = "0.6.2" }
 [dependencies]
 log = { workspace = true }
 tobj = { version = "4.0.2" }
+gfx-ne = { path = "crates/gfx" }
 window = { path = "crates/window" }
 logger = { path = "crates/logger" }
 rand = { version = "0.8.5", features = ["getrandom"] }
@@ -43,3 +44,6 @@ bool_comparison = "allow"
 assign_op_pattern = "allow"
 match_single_binding = "allow"
 redundant_field_names = "allow"
+
+[profile.dev.package.image]
+opt-level = 3

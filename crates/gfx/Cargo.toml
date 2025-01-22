@@ -1,0 +1,11 @@
+[package]
+# TODO: rename after refactor
+name = "gfx-ne"
+edition = "2021"
+
+[dependencies]
+log = { workspace = true }
+wgpu = { version = "24.0.0", features = ["spirv"] }
+
+[build-dependencies]
+serde_json = {version = "1.0.133"}
