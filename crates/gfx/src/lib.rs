@@ -3,3 +3,5 @@
 // TODO: if there is a context / device should that handle object creation instead of the object its self?
 // TODO: instead of this lib handling that might be better for rend to rexport the gfx objects wrapped in a arc?
 
+mod shader;
+pub use shader::Shader;
