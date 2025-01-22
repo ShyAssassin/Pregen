@@ -30,9 +30,8 @@ pub struct RenderContext {
 impl RenderContext {
     pub async fn new(window: &mut Window) -> Self {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            flags: wgpu::InstanceFlags::DEBUG,
-            // FIXME: this makes NSight crash because why not, cant use bitflags i guess
-            backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
+            backends: wgpu::Backends::PRIMARY,
+            flags: wgpu::InstanceFlags::from_build_config(),
             backend_options: wgpu::BackendOptions {
                 dx12: wgpu::Dx12BackendOptions {
                     shader_compiler: wgpu::Dx12Compiler::DynamicDxc {
