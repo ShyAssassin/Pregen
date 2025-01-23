@@ -1,9 +1,6 @@
 {
   description = "The Pregen game engine";
-
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
-  };
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
 
   outputs = { self, nixpkgs, ... }:
     let
@@ -17,14 +14,21 @@
       devShells = {
         x86_64-linux.default = pkgs.mkShell rec {
           buildInputs = with pkgs; [
-            libGL
             gdb valgrind
+
+            # Build dependencies
             rustup mold unzip
+            pkg-config cmake extra-cmake-modules
+
+            # Vulkan
             vulkan-headers vulkan-loader
             vulkan-tools vulkan-tools-lunarg
-            pkg-config cmake extra-cmake-modules
             vulkan-extension-layer vulkan-validation-layers
+
+            # Wayland
             wayland wayland-protocols wayland-scanner libxkbcommon
+
+            # X11
             xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libXinerama
           ];
 
