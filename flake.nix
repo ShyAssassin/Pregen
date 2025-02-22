@@ -1,44 +1,64 @@
 {
   description = "The Pregen game engine";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs, ... }:
-    let
-      system = "x86_64-linux";
+  outputs = { self, nixpkgs, ... }: let
+    system = "x86_64-linux";
+    pkgs = import nixpkgs {
+      inherit system;
+    };
+  in {
+    devShells = {
+      # God is dead and we have killed him
+      x86_64-linux.cross-x86_64-windows = pkgs.pkgsCross.mingwW64.mkShell rec {
+        packages = with pkgs; [
+          pkgs.pkgsCross.mingwW64.stdenv.cc
+          pkgsCross.mingwW64.windows.pthreads
+          rustup unzip cmake extra-cmake-modules
+        ];
 
-      pkgs = import nixpkgs {
-        inherit system;
+        shellHook = ''
+          rustup default stable
+          rustup target add x86_64-pc-windows-gnu
+          export CARGO_BUILD_TARGET="x86_64-pc-windows-gnu"
+          rustup component add rust-std rust-src rust-analyzer
+          # GOD ONLY KNOWS WHY THIS IS NECESSARY BUT IT IS AND I HATE IT
+          export RUSTFLAGS="-L native=${pkgs.pkgsCross.mingwW64.windows.pthreads}/lib"
+          cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.4 wgsl_analyzer
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath packages)}";
+        '';
       };
-    in
-    {
-      devShells = {
-        x86_64-linux.default = pkgs.mkShell rec {
-          buildInputs = with pkgs; [
-            gdb valgrind
 
-            # Build dependencies
-            rustup mold unzip
-            pkg-config cmake extra-cmake-modules
+      x86_64-linux.default = pkgs.mkShell rec {
+        buildInputs = with pkgs; [
+          gdb valgrind
 
-            # Vulkan
-            vulkan-headers vulkan-loader
-            vulkan-tools vulkan-tools-lunarg
-            vulkan-extension-layer vulkan-validation-layers
+          # Build dependencies
+          rustup mold unzip emscripten
+          pkg-config cmake extra-cmake-modules
 
-            # Wayland
-            wayland wayland-protocols wayland-scanner libxkbcommon
+          # Vulkan
+          vulkan-headers vulkan-loader
+          vulkan-tools vulkan-tools-lunarg
+          vulkan-extension-layer vulkan-validation-layers
 
-            # X11
-            xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libXinerama
-          ];
+          # Wayland
+          wayland wayland-protocols wayland-scanner libxkbcommon
 
-          shellHook = ''
-            rustup default stable
-            rustup component add rust-src rust-analyzer
-            cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.8.1 wgsl_analyzer
-            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
-          '';
-        };
+          # X11
+          xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libXinerama
+        ];
+
+        shellHook = ''
+          rustup default stable
+          export EM_CACHE=~/.emscripten_cache
+          rustup target add wasm32-unknown-unknown
+          rustup target add wasm32-unknown-emscripten
+          rustup component add rust-std rust-src rust-analyzer
+          cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.4 wgsl_analyzer
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
+        '';
       };
     };
+  };
 }
