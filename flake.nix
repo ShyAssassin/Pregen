@@ -24,7 +24,6 @@
           rustup component add rust-std rust-src rust-analyzer
           # GOD ONLY KNOWS WHY THIS IS NECESSARY BUT IT IS AND I HATE IT
           export RUSTFLAGS="-L native=${pkgs.pkgsCross.mingwW64.windows.pthreads}/lib"
-          cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.4 wgsl_analyzer
           export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath packages)}";
         '';
       };
