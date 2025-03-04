@@ -9,6 +9,7 @@ pub(crate) trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     fn focus(&mut self);
     fn shutdown(&mut self);
     fn is_focused(&self) -> bool;
+    fn lock_cursor(&mut self, lock: bool);
     fn poll(&mut self) -> Vec<WindowEvent>;
     fn resize(&mut self, width: u32, height: u32);
 
@@ -34,6 +35,7 @@ pub struct Window {
     // Window state
     is_focused: bool,
     scale: (f32, f32),
+    lock_cursor: bool,
     should_close: bool,
     cursor_visible: bool,
 }
@@ -84,6 +86,7 @@ impl Window {
             width: fwidth,
             height: fheight,
             is_focused: focus,
+            lock_cursor: false,
             should_close: false,
             cursor_visible: true,
         };
@@ -140,7 +143,9 @@ impl Window {
         assert_eq!(self.backend, WindowBackend::Web);
         return window.downcast_ref::<WebWindow>().unwrap().canvas.clone();
     }
+}
 
+impl Window {
     pub fn backend(&self) -> WindowBackend {
         return self.backend;
     }
@@ -165,6 +170,27 @@ impl Window {
 
     pub fn is_focused(&self) -> bool {
         return self.is_focused;
+    }
+
+    pub fn lock_cursor(&mut self, lock: bool) {
+        self.lock_cursor = lock;
+        self.window.lock_cursor(lock);
+    }
+
+    pub fn set_cursor_position(&mut self, x: f32, y: f32) {
+        if self.is_focused {
+            if self.lock_cursor {
+                if self.get_cursor_position() != (x, y) {
+                    self.window.set_cursor_position(x, y);
+                }
+                return;
+            }
+            log::warn!("Attempted to set cursor position while cursor is not locked");
+        }
+    }
+
+    pub fn get_cursor_position(&self) -> (f32, f32) {
+        return self.window.get_cursor_position();
     }
 
     pub fn set_clipboard(&mut self, text: &str) {

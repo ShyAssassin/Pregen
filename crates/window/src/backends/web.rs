@@ -104,6 +104,10 @@ impl NativeWindow for WebWindow {
         };
     }
 
+    fn lock_cursor(&mut self, lock: bool) {
+        // This is a no-op on the web
+    }
+
     fn poll(&mut self) -> Vec<WindowEvent> {
         // FIXME: to not block the main thread we need to use either a web worker or put everything in `requestAnimationFrame` closure
         // Potentially we could make the thread async sleep for a bit to not block the main thread

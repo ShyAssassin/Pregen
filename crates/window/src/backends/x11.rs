@@ -26,6 +26,10 @@ impl NativeWindow for X11Window {
         todo!()
     }
 
+    fn lock_cursor(&mut self, lock: bool) {
+        todo!()
+    }
+
     fn poll(&mut self) -> Vec<WindowEvent> {
         todo!()
     }

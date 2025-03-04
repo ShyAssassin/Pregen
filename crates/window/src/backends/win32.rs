@@ -3,8 +3,8 @@ use winapi::um::winuser::*;
 use winapi::shared::basetsd::LONG_PTR;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleW;
+use winapi::shared::windef::{HWND, POINT, PRECTL};
 use winapi::shared::winerror::ERROR_CLASS_ALREADY_EXISTS;
-use winapi::shared::windef::{HBRUSH, HWND, POINT, PRECTL};
 use winapi::um::winbase::{GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use winapi::shared::minwindef::{HINSTANCE, HIWORD, LOWORD, LPARAM, LPVOID, LRESULT, UINT, WPARAM};
 
@@ -178,13 +178,12 @@ impl NativeWindow for Win32Window {
             let wnd_class = WNDCLASSW {
                 hInstance: h_instance,
                 lpszMenuName: null_mut(),
+                hbrBackground: null_mut(),
                 style: CS_VREDRAW | CS_HREDRAW,
                 lpfnWndProc: Some(Self::wndproc),
                 lpszClassName: class_name.as_ptr(),
                 hCursor: LoadCursorW(null_mut(), IDC_ARROW),
                 hIcon: LoadIconW(null_mut(), IDI_APPLICATION),
-                // FIXME: this is to prevent flashbangs after creation, would be a better idea to paint black on WM_CREATE
-                hbrBackground: (COLOR_BACKGROUND + 1) as HBRUSH,
                 ..Default::default()
             };
 
@@ -254,6 +253,12 @@ impl NativeWindow for Win32Window {
         }
     }
 
+    fn lock_cursor(&mut self, lock: bool) {
+        // This is technically a no-op since locking isnt a thing under windows
+        // but to keep consistency with other platforms we will just hide the cursor
+        self.set_cursor_visible(!lock);
+    }
+
     fn poll(&mut self) -> Vec<WindowEvent> {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
@@ -265,8 +270,12 @@ impl NativeWindow for Win32Window {
                 };
             }
             // We need to perform the standard message loop of win32 first to not softlock the mutex
+            // This mutex is extremly slow and should be replaced with a lock free alternative
             let mut queue = self.state.events.lock().unwrap();
-            return queue.drain(..).collect();
+            if !queue.is_empty() {
+                return queue.drain(..).collect();
+            }
+            return Vec::new();
         }
     }
 
@@ -377,7 +386,7 @@ impl NativeWindow for Win32Window {
             let new_style = if resizable {
                 style | WS_OVERLAPPEDWINDOW
             } else {
-                // TODO: is this correct?
+                // FIXME: is this correct?
                 style & !WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MINIMIZEBOX | WS_OVERLAPPED
             };
             SetWindowLongPtrW(self.hwnd, GWL_STYLE, new_style as LONG_PTR);
@@ -463,7 +472,7 @@ impl From<WPARAM> for Key {
             // VK_CONTROL is triggered by both LCONTROL and RCONTROL
             VK_CONTROL => Key::Other(VK_CONTROL as u32),
             _ => {
-                log::error!("Unknown key code: {}", key);
+                log::warn!("Unknown key code: {}", key);
                 Key::Other(key as u32)
             },
         }

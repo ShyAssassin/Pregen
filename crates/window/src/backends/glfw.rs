@@ -45,6 +45,10 @@ impl NativeWindow for GlfwWindow {
         return self.window.is_focused();
     }
 
+    fn lock_cursor(&mut self, lock: bool) {
+        self.window.set_cursor_mode(if lock { glfw::CursorMode::Disabled } else { glfw::CursorMode::Normal });
+    }
+
     fn poll(&mut self) -> Vec<WindowEvent> {
         self.glfw.poll_events();
         let mut events = Vec::new();
@@ -209,7 +213,7 @@ impl From<glfw::Key> for Key {
             glfw::Key::PageUp => Key::PageUp, glfw::Key::PageDown => Key::PageDown, glfw::Key::Minus => Key::Minus,
             glfw::Key::Equal => Key::Equals, glfw::Key::LeftBracket => Key::LeftBracket, glfw::Key::RightBracket => Key::RightBracket,
             _ => {
-                println!("Unknown key code: {:?}", key);
+                log::warn!("Unknown key code: {:?}", key);
                 Key::Other(key as u32)
             },
         }
