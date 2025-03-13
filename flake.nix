@@ -1,6 +1,6 @@
 {
   description = "The Pregen game engine";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
 
   outputs = { self, nixpkgs, ... }: let
     system = "x86_64-linux";
@@ -30,7 +30,7 @@
 
       x86_64-linux.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
-          gdb valgrind
+          lldb valgrind
 
           # Build dependencies
           rustup mold unzip emscripten
@@ -50,11 +50,11 @@
 
         shellHook = ''
           rustup default stable
-          export EM_CACHE=~/.emscripten_cache
+          export EM_CACHE=.emscripten_cache
           rustup target add wasm32-unknown-unknown
           rustup target add wasm32-unknown-emscripten
           rustup component add rust-std rust-src rust-analyzer
-          cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.4 wgsl_analyzer
+          cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.5 wgsl_analyzer
           export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
         '';
       };
