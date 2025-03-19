@@ -1,3 +1,4 @@
+use super::{Key, Action};
 use std::collections::HashSet;
 use super::{WindowBackend, WindowEvent};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
@@ -16,13 +17,13 @@ pub(crate) trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     fn get_size(&self) -> (u32, u32);
     fn get_clipboard(&self) -> String;
     fn get_content_scale(&self) -> (f32, f32);
-    fn get_cursor_position(&self) -> (f32, f32);
+    fn get_cursor_position(&self) -> (u32, u32);
 
     fn set_title(&mut self, title: &str);
     fn set_clipboard(&mut self, text: &str);
     fn set_resizeable(&mut self, resizable: bool);
     fn set_cursor_visible(&mut self, visible: bool);
-    fn set_cursor_position(&mut self, x: f32, y: f32);
+    fn set_cursor_position(&mut self, x: u32, y: u32);
 }
 
 pub struct Window {
@@ -38,6 +39,9 @@ pub struct Window {
     lock_cursor: bool,
     should_close: bool,
     cursor_visible: bool,
+    mouse_delta: (f32, f32),
+    mouse_position: (u32, u32),
+    pressed_keys: HashSet<Key>,
 }
 
 impl Window {
@@ -89,6 +93,9 @@ impl Window {
             lock_cursor: false,
             should_close: false,
             cursor_visible: true,
+            mouse_position: (0, 0),
+            mouse_delta: (0.0, 0.0),
+            pressed_keys: HashSet::new(),
         };
     }
 
@@ -117,6 +124,23 @@ impl Window {
                     self.width = *width;
                     self.height = *height;
                 }
+                WindowEvent::KeyboardInput(key, _, action) => {
+                    match action {
+                        Action::Pressed => {
+                            self.pressed_keys.insert(*key);
+                        }
+                        Action::Released => {
+                            self.pressed_keys.remove(key);
+                        }
+                    }
+                }
+                WindowEvent::CursorPosition { mouse_x, mouse_y } => {
+                    self.mouse_delta = (
+                        *mouse_x as f32 - self.mouse_position.0 as f32,
+                        *mouse_y as f32 - self.mouse_position.1 as f32,
+                    );
+                    self.mouse_position = (*mouse_x, *mouse_y);
+                }
                 WindowEvent::ScaleFactorChanged { scale_x, scale_y } => {
                     self.scale = (*scale_x, *scale_y);
                 }
@@ -133,12 +157,24 @@ impl Window {
         return (x as i32, y as i32);
     }
 
+    pub fn key_pressed(&self, key: Key) -> bool {
+        return self.pressed_keys.contains(&key);
+    }
+
+    pub fn mouse_delta(&self) -> (f32, f32) {
+        return self.mouse_delta;
+    }
+
+    pub fn get_pressed_keys(&self) -> &HashSet<Key> {
+        return &self.pressed_keys;
+    }
+
     #[cfg(target_family = "wasm")]
     pub fn canvas(&self) -> web_sys::HtmlCanvasElement {
         use std::any::Any;
         use crate::backends::WebWindow;
 
-        // some sketchy stuff right here
+        // some sketchy shit right here
         let window: &dyn Any = &self.window;
         assert_eq!(self.backend, WindowBackend::Web);
         return window.downcast_ref::<WebWindow>().unwrap().canvas.clone();
@@ -168,7 +204,7 @@ impl Window {
         self.is_focused = true;
     }
 
-    pub fn is_focused(&self) -> bool {
+    pub fn get_focus(&self) -> bool {
         return self.is_focused;
     }
 
@@ -177,10 +213,12 @@ impl Window {
         self.window.lock_cursor(lock);
     }
 
-    pub fn set_cursor_position(&mut self, x: f32, y: f32) {
+    pub fn set_cursor_position(&mut self, x: u32, y: u32) {
         if self.is_focused {
             if self.lock_cursor {
                 if self.get_cursor_position() != (x, y) {
+                    self.mouse_position = (x, y);
+                    self.mouse_delta = (0.0, 0.0);
                     self.window.set_cursor_position(x, y);
                 }
                 return;
@@ -189,7 +227,7 @@ impl Window {
         }
     }
 
-    pub fn get_cursor_position(&self) -> (f32, f32) {
+    pub fn get_cursor_position(&self) -> (u32, u32) {
         return self.window.get_cursor_position();
     }
 

@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug, Clone, Copy)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum Action {
     Pressed,
     Released,
@@ -17,8 +17,8 @@ impl From<bool> for Action {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum Key {
     // Arrow keys
     Left, Right, Up, Down,
@@ -60,8 +60,8 @@ impl Key {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash)]
 pub enum MouseButton {
     Left,
     Right,
@@ -69,7 +69,7 @@ pub enum MouseButton {
     Other(u32),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum WindowEvent {
     /// The window has been asked closed.
     CloseRequested,

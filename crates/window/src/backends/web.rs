@@ -134,7 +134,7 @@ impl NativeWindow for WebWindow {
         return (1.0, 1.0);
     }
 
-    fn get_cursor_position(&self) -> (f32, f32) {
+    fn get_cursor_position(&self) -> (u32, u32) {
         todo!()
     }
 
@@ -154,7 +154,7 @@ impl NativeWindow for WebWindow {
         todo!("Will need to set the cursor style to none or default");
     }
 
-    fn set_cursor_position(&mut self, x: f32, y: f32) {
+    fn set_cursor_position(&mut self, x: u32, y: u32) {
         todo!()
     }
 }

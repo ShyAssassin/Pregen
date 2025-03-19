@@ -402,7 +402,7 @@ impl NativeWindow for Win32Window {
         }
     }
 
-    fn set_cursor_position(&mut self, x: f32, y: f32) {
+    fn set_cursor_position(&mut self, x: u32, y: u32) {
         unsafe {
             let mut point = POINT { x: x as i32, y: y as i32 };
             ClientToScreen(self.hwnd, &mut point);
@@ -410,12 +410,12 @@ impl NativeWindow for Win32Window {
         }
     }
 
-    fn get_cursor_position(&self) -> (f32, f32) {
+    fn get_cursor_position(&self) -> (u32, u32) {
         unsafe {
             let mut point = POINT { x: 0, y: 0 };
             GetCursorPos(&mut point);
             ScreenToClient(self.hwnd, &mut point);
-            return (point.x as f32, point.y as f32);
+            return (point.x as u32, point.y as u32);
         }
     }
 }
