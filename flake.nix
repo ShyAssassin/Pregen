@@ -1,6 +1,6 @@
 {
   description = "The Pregen game engine";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
   outputs = { self, nixpkgs, ... }: let
     system = "x86_64-linux";
@@ -50,7 +50,7 @@
 
         shellHook = ''
           rustup default stable
-          export EM_CACHE=.emscripten_cache
+          export EM_CACHE=~/.emscripten_cache
           rustup target add wasm32-unknown-unknown
           rustup target add wasm32-unknown-emscripten
           rustup component add rust-std rust-src rust-analyzer
