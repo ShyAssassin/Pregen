@@ -127,6 +127,7 @@ impl Win32Window {
             WM_MOUSEMOVE => {
                 let mouse_x = LOWORD(l_param as u32) as u32;
                 let mouse_y = HIWORD(l_param as u32) as u32;
+                // TODO: check if the cursor moved to somewhere we asked it to, if so ignore
                 state.events.lock().unwrap().push(WindowEvent::CursorPosition {mouse_x, mouse_y});
                 return LRESULT::from(0u8);
             }

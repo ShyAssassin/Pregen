@@ -42,6 +42,7 @@ pub struct Window {
     mouse_delta: (f32, f32),
     mouse_position: (u32, u32),
     pressed_keys: HashSet<Key>,
+    cursor_move_pos: (f32, f32),
 }
 
 impl Window {
@@ -95,6 +96,7 @@ impl Window {
             cursor_visible: true,
             mouse_position: (0, 0),
             mouse_delta: (0.0, 0.0),
+            cursor_move_pos: (0.0, 0.0),
             pressed_keys: HashSet::new(),
         };
     }
@@ -135,11 +137,20 @@ impl Window {
                     }
                 }
                 WindowEvent::CursorPosition { mouse_x, mouse_y } => {
-                    self.mouse_delta = (
-                        *mouse_x as f32 - self.mouse_position.0 as f32,
-                        *mouse_y as f32 - self.mouse_position.1 as f32,
-                    );
-                    self.mouse_position = (*mouse_x, *mouse_y);
+                    if (*mouse_x, *mouse_y) != self.mouse_position {
+                        // Account for movement which occurs from set_cursor_position
+                        // TODO: should probably be done in the platform dependent backend
+                        // A hack could also be to just check if the new delta is the inverse of the last delta
+                        if self.cursor_move_pos == (*mouse_x as f32, *mouse_y as f32) {
+                            self.mouse_delta = (0.0, 0.0);
+                            continue;
+                        }
+                        self.mouse_delta = (
+                            *mouse_x as f32 - self.mouse_position.0 as f32,
+                            *mouse_y as f32 - self.mouse_position.1 as f32,
+                        );
+                        self.mouse_position = (*mouse_x, *mouse_y);
+                    }
                 }
                 WindowEvent::ScaleFactorChanged { scale_x, scale_y } => {
                     self.scale = (*scale_x, *scale_y);
@@ -220,6 +231,7 @@ impl Window {
                     self.mouse_position = (x, y);
                     self.mouse_delta = (0.0, 0.0);
                     self.window.set_cursor_position(x, y);
+                    self.cursor_move_pos = (x as f32, y as f32);
                 }
                 return;
             }
