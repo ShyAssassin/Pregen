@@ -21,6 +21,7 @@ pub use x11::X11Window;
 #[derive(Debug, Clone, Copy)]
 #[derive(Eq, PartialEq, Hash)]
 pub enum WindowBackend {
+    Unkown,
     Win32,
     Glfw,
     Web,

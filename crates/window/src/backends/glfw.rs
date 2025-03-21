@@ -49,6 +49,7 @@ impl NativeWindow for GlfwWindow {
         self.window.set_cursor_mode(if lock { glfw::CursorMode::Disabled } else { glfw::CursorMode::Normal });
     }
 
+    // TODO: ensure compliance with the trait specification
     fn poll(&mut self) -> Vec<WindowEvent> {
         self.glfw.poll_events();
         let mut events = Vec::new();

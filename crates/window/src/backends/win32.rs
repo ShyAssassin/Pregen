@@ -260,6 +260,7 @@ impl NativeWindow for Win32Window {
         self.set_cursor_visible(!lock);
     }
 
+    // TODO: ensure compliance with the trait specification
     fn poll(&mut self) -> Vec<WindowEvent> {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();

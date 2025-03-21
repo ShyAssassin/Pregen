@@ -4,25 +4,91 @@ use super::{WindowBackend, WindowEvent};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
-pub(crate) trait NativeWindow: HasWindowHandle + HasDisplayHandle {
+/// A trait representing a native window handle
+/// - This trait is used to provide a platform agnostic way to access the native window handle
+/// - The handle should be unique to the window and should not be shared between windows
+/// - The handle should be able to be converted to a raw pointer or a raw handle
+/// # Safety
+/// - The window handle needs to have a fixed known size at compile time
+/// - While the window handle is not needed to be able to be shared between threads
+///   you should assume that the window could be initialized and called on a different thread
+pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
+    /// Initialize a new native window and return the handle
+    /// - This function will only be called once per window on creation
+    /// - This function should allocate any resources needed for the window
     fn init() -> Self where Self: Sized;
+
+    /// Show the window to the user
+    /// - If the platform can request focus this should also request focus
+    /// - Platforms without a concept of visibility can safely ignore this call
     fn show(&mut self);
+
+    /// Request the window to be focused
+    /// - Platforms without a concept of focus can safely ignore this call
     fn focus(&mut self);
+
+    /// Shutdown the window and release any held resources
+    /// - The window should be closed and the handle should be invalidated
     fn shutdown(&mut self);
+
+    /// Fetch the focus state of the window
+    /// - Platforms without a concept of focus can safely return true
     fn is_focused(&self) -> bool;
+
+    /// Lock the cursor to the window and prepare for mouse move events
+    /// - Platforms without a cursor can safely ignore this call
+    /// - On platforms with a visible cursor, the cursor should be hidden
     fn lock_cursor(&mut self, lock: bool);
+
+    /// Poll the underlying native window for any events that have occurred since the last poll
+    /// - can be expected to be called at least once per frame in a game loop
+    /// # Notes
+    /// - The native impl should not emit cursor events caused by `set_cursor_position`
+    /// - When a key is released the native impl should emit a single event indicating the release of the key
+    /// - When a key is held down the native impl should only emit a single event indicating the key is pressed
+    ///   - This event should only be fired on the first frame the key is pressed down, and not on subsequent frames
     fn poll(&mut self) -> Vec<WindowEvent>;
+
+    /// Set the size of the windows viewport in pixels
+    /// - Platforms with a fixed viewport can safely ignore this call
+    /// - Platforms with scaling should take the scale factor into account
     fn resize(&mut self, width: u32, height: u32);
 
+    /// Fetch the current size of the viewport in pixels
+    /// - Platforms with scaling should take the scale factor into account
     fn get_size(&self) -> (u32, u32);
+
+    /// Fetch the current contents stored within the clipboard
+    /// - Platforms without a clipboard can safely return an empty string
     fn get_clipboard(&self) -> String;
+
+    /// Fetch the current content scale of the window
+    /// - Platforms with a fixed scale should return (1.0, 1.0)
+    /// - The content scale is the ratio between the window size in pixels and the size in physical units
     fn get_content_scale(&self) -> (f32, f32);
+
+    /// Fetch the current cursor position in pixels relative to the top left corner of the window
+    /// - Platforms without a cursor can safely return (0, 0)
     fn get_cursor_position(&self) -> (u32, u32);
 
+    /// Set the title of the window
+    /// - Platforms without a title can safely ignore this call
     fn set_title(&mut self, title: &str);
+
+    /// Set the contents of the clipboard
+    /// - Platforms without a clipboard can safely ignore this call
     fn set_clipboard(&mut self, text: &str);
+
+    /// Set where the window is able to be user resizable
+    /// - Platforms without a resizable window can safely ignore this call
     fn set_resizeable(&mut self, resizable: bool);
+
+    /// Set the visibility of the cursor while in the client area of the window
+    /// - Platforms without a cursor can safely ignore this call
     fn set_cursor_visible(&mut self, visible: bool);
+
+    /// Move the cursor to a specific position in the window in pixels relative to the top left corner
+    /// - Platforms without a cursor can safely ignore this call
     fn set_cursor_position(&mut self, x: u32, y: u32);
 }
 
@@ -86,6 +152,28 @@ impl Window {
         return Self {
             title: name.to_string(),
             backend: backend,
+            window: window,
+            scale: scale,
+            width: fwidth,
+            height: fheight,
+            is_focused: focus,
+            lock_cursor: false,
+            should_close: false,
+            cursor_visible: true,
+            mouse_position: (0, 0),
+            mouse_delta: (0.0, 0.0),
+            cursor_move_pos: (0.0, 0.0),
+            pressed_keys: HashSet::new(),
+        };
+    }
+
+    pub fn from_native_window(window: Box<dyn NativeWindow>) -> Self {
+        let focus = window.is_focused();
+        let scale = window.get_content_scale();
+        let (fwidth, fheight) = window.get_size();
+        return Self {
+            title: "Unnamed Window".to_string(),
+            backend: WindowBackend::Unkown,
             window: window,
             scale: scale,
             width: fwidth,
