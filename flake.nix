@@ -12,6 +12,7 @@
       # God is dead and we have killed him
       x86_64-linux.cross-x86_64-windows = pkgs.pkgsCross.mingwW64.mkShell rec {
         packages = with pkgs; [
+          wineWowPackages.stable
           pkgs.pkgsCross.mingwW64.stdenv.cc
           pkgsCross.mingwW64.windows.pthreads
           rustup unzip cmake extra-cmake-modules
