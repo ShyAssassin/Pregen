@@ -1,8 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use std::{fmt::Debug, ops::{Deref, DerefMut}};
 
-pub trait Uniform: Pod + Zeroable + PartialEq + Default {}
-impl<T: Pod + Zeroable + PartialEq + Default> Uniform for T {}
+pub trait Uniform: Pod + Zeroable + PartialEq {}
+impl<T: Pod + Zeroable + PartialEq> Uniform for T {}
 
 pub struct UniformBuffer<T: Uniform> {
     pub name: String,
