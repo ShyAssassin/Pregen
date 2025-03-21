@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
+bytemuck = { workspace = true }
+raw-window-handle = { workspace = true }
 wgpu = { version = "24.0.1", features = ["spirv"] }
 
 [build-dependencies]

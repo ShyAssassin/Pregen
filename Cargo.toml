@@ -16,6 +16,7 @@ members = [
 [workspace.dependencies]
 log = { version = "0.4.22" }
 web-sys = { version = "0.3.76" }
+bytemuck = { version = "1.22.0" }
 profiling = { version = "1.0.16" }
 raw-window-handle = { version = "0.6.2" }
 
@@ -25,8 +26,8 @@ tobj = { version = "4.0.2" }
 gfx-ne = { path = "crates/gfx" }
 window = { path = "crates/window" }
 logger = { path = "crates/logger" }
+bytemuck = { workspace = true, features = ["derive"] }
 rand = { version = "0.8.5", features = ["getrandom"] }
-bytemuck = { version = "1.20.0", features = ["derive"] }
 profiling = { workspace = true, features = ["procmacros"] }
 glam = { version = "0.29.2", features = ["bytemuck", "rand"] }
 wgpu = { version = "24.0.1", features = ["vulkan-portability"] }
