@@ -5,6 +5,7 @@ use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, Window
 #[derive(Debug)]
 pub struct X11Window;
 
+#[profiling::all_functions]
 impl NativeWindow for X11Window {
     fn init() -> Self {
         todo!()

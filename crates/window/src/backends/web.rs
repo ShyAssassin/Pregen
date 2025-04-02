@@ -16,6 +16,7 @@ pub struct WebWindow {
     pub events: Arc<Mutex<Vec<WindowEvent>>>,
 }
 
+#[profiling::all_functions]
 impl NativeWindow for WebWindow {
     fn init() -> Self {
         let window = web_sys::window().unwrap();

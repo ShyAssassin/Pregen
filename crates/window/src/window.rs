@@ -111,6 +111,7 @@ pub struct Window {
     cursor_move_pos: (f32, f32),
 }
 
+#[profiling::all_functions]
 impl Window {
     pub fn new(name: &str, width: u32, height: u32, resizeable: bool, backend: WindowBackend) -> Self {
         log::info!("Creating window with backend: {:?}", backend);
@@ -203,6 +204,8 @@ impl Window {
             match event {
                 WindowEvent::FocusLost => {
                     self.is_focused = false;
+                    self.pressed_keys.clear();
+                    self.mouse_delta = (0.0, 0.0);
                 }
                 WindowEvent::FocusGained => {
                     self.is_focused = true;
@@ -227,8 +230,6 @@ impl Window {
                 WindowEvent::CursorPosition { mouse_x, mouse_y } => {
                     if (*mouse_x, *mouse_y) != self.mouse_position {
                         // Account for movement which occurs from set_cursor_position
-                        // TODO: should probably be done in the platform dependent backend
-                        // A hack could also be to just check if the new delta is the inverse of the last delta
                         if self.cursor_move_pos == (*mouse_x as f32, *mouse_y as f32) {
                             self.mouse_delta = (0.0, 0.0);
                             continue;

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
+profiling = { workspace = true }
 raw-window-handle = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -16,7 +17,7 @@ x11rb = { version = "0.13.1" }
 glfw = { version = "0.59.0", features = ["wayland"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi = { version = "0.3.9", features = ["winuser", "winbase", "winerror", "errhandlingapi", "impl-default"] }
+winapi = { version = "0.3.9", features = ["winuser", "winbase", "winerror", "errhandlingapi", "impl-default", "windowsx"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 web-sys = { workspace = true, features = ["Window", "Document", "HtmlCanvasElement", "KeyboardEvent", "MouseEvent", "FocusEvent"] }

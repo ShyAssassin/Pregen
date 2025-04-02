@@ -5,6 +5,7 @@ use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::shared::windef::{HWND, POINT, PRECTL};
 use winapi::shared::winerror::ERROR_CLASS_ALREADY_EXISTS;
+use winapi::shared::windowsx::{GET_X_LPARAM, GET_Y_LPARAM};
 use winapi::um::winbase::{GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use winapi::shared::minwindef::{HINSTANCE, HIWORD, LOWORD, LPARAM, LPVOID, LRESULT, UINT, WPARAM};
 
@@ -22,6 +23,7 @@ use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 struct Win32WindowState {
     pub cursor_visible: Mutex<bool>,
     pub events: Mutex<Vec<WindowEvent>>,
+    pub cursor_move_pos: Mutex<(i32, i32)>,
 }
 
 #[derive(Debug)]
@@ -41,6 +43,7 @@ impl Win32Window {
             state: Arc::new(Win32WindowState {
                 events: Mutex::new(Vec::new()),
                 cursor_visible: Mutex::new(true),
+                cursor_move_pos: Mutex::new((0, 0)),
             }),
         }
     }
@@ -118,18 +121,37 @@ impl Win32Window {
 
             WM_KEYDOWN | WM_KEYUP => {
                 let mut queue = state.events.lock().unwrap();
-                let key = Key::from(w_param);
+                let is_extended = (l_param & 0x01000000) != 0;
+                let scancode = ((l_param >> 16) & 0xFF) as u32;
+                // Some keys are not correctly mapped by the windows API
+                let key_code = match w_param as i32 {
+                    VK_MENU => if is_extended {VK_RMENU} else {VK_LMENU}
+                    VK_SHIFT => if scancode == 0x36 {VK_RSHIFT} else {VK_LSHIFT}
+                    VK_CONTROL => if is_extended {VK_RCONTROL} else {VK_LCONTROL}
+                    _ => w_param as i32,
+                };
                 let is_pressed = Action::from(msg == WM_KEYDOWN);
-                queue.push(WindowEvent::KeyboardInput(key, w_param as u32, is_pressed));
+                queue.push(WindowEvent::KeyboardInput(Key::from(key_code as WPARAM), scancode, is_pressed));
                 return LRESULT::from(0u8);
             }
 
             WM_MOUSEMOVE => {
-                let mouse_x = LOWORD(l_param as u32) as u32;
-                let mouse_y = HIWORD(l_param as u32) as u32;
-                // TODO: check if the cursor moved to somewhere we asked it to, if so ignore
-                state.events.lock().unwrap().push(WindowEvent::CursorPosition {mouse_x, mouse_y});
+                let mouse_x = GET_X_LPARAM(l_param);
+                let mouse_y = GET_Y_LPARAM(l_param);
+                // Should probably move over to the rawinput windows API for this stuff
+                state.events.lock().unwrap().push(WindowEvent::CursorPosition {
+                    mouse_x: mouse_x as u32,
+                    mouse_y: mouse_y as u32
+                });
                 return LRESULT::from(0u8);
+                // FIXME: sometimes the cursor doesnt allign with the actual position
+                // if (mouse_x - state.cursor_move_pos.lock().unwrap().0).abs() > 1 ||
+                //    (mouse_y - state.cursor_move_pos.lock().unwrap().1).abs() > 1 {
+                //     state.events.lock().unwrap().push(WindowEvent::CursorPosition {
+                //         mouse_x: mouse_x as u32,
+                //         mouse_y: mouse_y as u32
+                //     });
+                // }
             }
 
             WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP | WM_MBUTTONDOWN | WM_MBUTTONUP => {
@@ -151,16 +173,15 @@ impl Win32Window {
                 return LRESULT::from(0u8);
             }
 
-            WM_SETFOCUS => {
-                state.events.lock().unwrap().push(WindowEvent::FocusGained);
+            WM_ACTIVATE => {
+                let active = LOWORD(w_param as u32);
+                if active == WA_ACTIVE || active == WA_CLICKACTIVE {
+                    state.events.lock().unwrap().push(WindowEvent::FocusGained);
+                } else {
+                    state.events.lock().unwrap().push(WindowEvent::FocusLost);
+                }
                 return LRESULT::from(0u8);
             }
-
-            WM_KILLFOCUS => {
-                state.events.lock().unwrap().push(WindowEvent::FocusLost);
-                return LRESULT::from(0u8);
-            }
-
             // Needs to manually be handled to avoid locking
             WM_SYSCHAR | WM_SYSKEYDOWN | WM_SYSKEYUP => {
                 return LRESULT::from(0u8);
@@ -170,6 +191,7 @@ impl Win32Window {
     }
 }
 
+#[profiling::all_functions]
 impl NativeWindow for Win32Window {
     fn init() -> Self {
         unsafe {
@@ -260,7 +282,6 @@ impl NativeWindow for Win32Window {
         self.set_cursor_visible(!lock);
     }
 
-    // TODO: ensure compliance with the trait specification
     fn poll(&mut self) -> Vec<WindowEvent> {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
@@ -272,7 +293,7 @@ impl NativeWindow for Win32Window {
                 };
             }
             // We need to perform the standard message loop of win32 first to not softlock the mutex
-            // This mutex is extremly slow and should be replaced with a lock free alternative
+            // This mutex is kinda slow and should be replaced with a lock free alternative
             let mut queue = self.state.events.lock().unwrap();
             if !queue.is_empty() {
                 return queue.drain(..).collect();
@@ -406,6 +427,7 @@ impl NativeWindow for Win32Window {
 
     fn set_cursor_position(&mut self, x: u32, y: u32) {
         unsafe {
+            *self.state.cursor_move_pos.lock().unwrap() = (x as i32, y as i32);
             let mut point = POINT { x: x as i32, y: y as i32 };
             ClientToScreen(self.hwnd, &mut point);
             SetCursorPos(point.x, point.y);

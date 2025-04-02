@@ -10,6 +10,7 @@ pub struct GlfwWindow {
     events: GlfwReceiver<(f64, GlfwWindowEvent)>
 }
 
+#[profiling::all_functions]
 impl NativeWindow for GlfwWindow {
     fn init() -> Self {
         let mut glfw = glfw::init(|err: glfw::Error, desc: String| {
@@ -89,7 +90,12 @@ impl NativeWindow for GlfwWindow {
                 GlfwWindowEvent::Key(key, code, action, _) => {
                     events.push(WindowEvent::KeyboardInput(key.into(), code as u32, action.into()));
                 }
-                _ => {}
+                GlfwWindowEvent::Scroll(x, y) => {
+                    events.push(WindowEvent::MouseWheel(x as f32, y as f32));
+                }
+                _ => {
+                    log::warn!("Unhandled event: {:?}", event);
+                }
             }
         }
 

@@ -87,11 +87,13 @@ pub enum WindowEvent {
     Maximized,
 
     /// The user has pressed a key while within the window.
-    // TODO: check for modifier keys, could maybe be done in the platform independent layer?
     KeyboardInput(Key, u32, Action),
 
     /// A Mouse button has been pressed.
     MouseButton(MouseButton, Action),
+
+    /// The user has scrolled the mouse wheel.
+    MouseWheel(f32, f32),
 
     /// The Mouse has moved within the window.
     CursorPosition {
