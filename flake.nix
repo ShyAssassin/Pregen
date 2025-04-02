@@ -10,7 +10,7 @@
   in {
     devShells = {
       # God is dead and we have killed him
-      x86_64-linux.cross-x86_64-windows = pkgs.pkgsCross.mingwW64.mkShell rec {
+      x86_64-linux.x86_64-windows = pkgs.pkgsCross.mingwW64.mkShell rec {
         packages = with pkgs; [
           wineWowPackages.stable
           pkgs.pkgsCross.mingwW64.stdenv.cc
@@ -31,11 +31,11 @@
 
       x86_64-linux.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
-          lldb valgrind
+          tracy lldb valgrind
 
           # Build dependencies
-          rustup mold unzip emscripten
-          pkg-config cmake extra-cmake-modules
+          pkg-config unzip extra-cmake-modules
+          rustup clang mold cmake stdenv.cc.cc.lib
 
           # Vulkan
           vulkan-headers vulkan-loader
@@ -50,13 +50,12 @@
         ];
 
         shellHook = ''
-          rustup default stable
-          export EM_CACHE=~/.emscripten_cache
-          rustup target add wasm32-unknown-unknown
-          rustup target add wasm32-unknown-emscripten
-          rustup component add rust-std rust-src rust-analyzer
+          rustup default 1.85.1
+          rustup component add rust-src rust-std
+          rustup component add rust-docs rust-analyzer
           cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.5 wgsl_analyzer
           export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
+          export RUSTFLAGS="$RUSTFLAGS -C linker=${pkgs.clang}/bin/clang -C link-arg=-fuse-ld=${pkgs.mold}/bin/mold"
         '';
       };
     };
