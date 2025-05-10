@@ -19,7 +19,7 @@
         ];
 
         shellHook = ''
-          rustup default stable
+          rustup default 1.85.1
           rustup target add x86_64-pc-windows-gnu
           export CARGO_BUILD_TARGET="x86_64-pc-windows-gnu"
           rustup component add rust-std rust-src rust-analyzer
