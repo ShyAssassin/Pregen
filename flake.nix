@@ -46,7 +46,7 @@
           wayland wayland-protocols wayland-scanner libxkbcommon
 
           # X11
-          xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libXinerama
+          xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libXinerama xorg.libxcb
         ];
 
         shellHook = ''
