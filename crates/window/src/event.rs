@@ -108,7 +108,17 @@ pub enum WindowEvent {
     },
 
     /// The window has been resized.
+    /// Does not account for scale factor.
+    /// If you want to know the size of the framebuffer, use `FramebufferResize`.
     Resize {
+        width: u32,
+        height: u32,
+    },
+
+    /// The window has been resized.
+    /// Accounts for scale factor.
+    /// If you want to know the size of the window, use `Resize`.
+    FramebufferResize {
         width: u32,
         height: u32,
     },
@@ -117,8 +127,22 @@ pub enum WindowEvent {
 impl WindowEvent {
     // FIXME: in a perfect world this would be static
     pub fn id(&self) -> u64 {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        std::mem::discriminant(self).hash(&mut hasher);
-        return hasher.finish()
+        use std::collections::hash_map::DefaultHasher;
+
+        let mut hasher = DefaultHasher::new();
+        match self {
+            WindowEvent::MouseButton(button, _) => {
+                std::mem::discriminant(self).hash(&mut hasher);
+                button.hash(&mut hasher);
+            }
+            WindowEvent::KeyboardInput(_, keycode, _) => {
+                std::mem::discriminant(self).hash(&mut hasher);
+                keycode.hash(&mut hasher);
+            }
+            _ => {
+                std::mem::discriminant(self).hash(&mut hasher);
+            }
+        }
+        return hasher.finish();
     }
 }

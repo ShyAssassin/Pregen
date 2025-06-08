@@ -56,6 +56,8 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
 
     /// Fetch the current size of the viewport in pixels
     /// - Platforms with scaling should take the scale factor into account
+    /// - Platforms with a fixed viewport can safely return the size of the window
+    /// - Platforms that include a border or title bar should return the size of the client area
     fn get_size(&self) -> (u32, u32);
 
     /// Fetch the current contents stored within the clipboard
@@ -142,9 +144,11 @@ impl Window {
         window.set_title(name);
         window.resize(width, height);
         window.set_resizeable(resizeable);
-
         let scale = window.get_content_scale();
         let (fwidth, fheight) = window.get_size();
+
+        let fwidth = fwidth * scale.0 as u32;
+        let fheight = fheight * scale.1 as u32;
         log::debug!("Content scale: {:?}", scale);
         log::debug!("Window size: {}x{}", width, height);
         log::debug!("Framebuffer size: {}x{}", fwidth, fheight);
@@ -193,68 +197,76 @@ impl Window {
     pub fn poll(&mut self) -> Vec<WindowEvent> {
         let mut events = Vec::new();
         let mut seen_events = HashSet::new();
-        // Remove all duplicate events but retain newest
-        for event in self.window.poll().iter().rev() {
-            if seen_events.insert(event.id()) {
-                events.push(*event);
-            }
-        }
 
-        for event in &events {
-            match event {
-                WindowEvent::FocusLost => {
-                    self.is_focused = false;
-                    self.pressed_keys.clear();
-                    self.mouse_delta = (0.0, 0.0);
-                }
-                WindowEvent::FocusGained => {
-                    self.is_focused = true;
-                }
-                WindowEvent::CloseRequested => {
-                    self.should_close = true;
-                }
-                WindowEvent::Resize { width, height } => {
-                    self.width = *width;
-                    self.height = *height;
-                }
-                WindowEvent::KeyboardInput(key, _, action) => {
-                    match action {
-                        Action::Pressed => {
-                            self.pressed_keys.insert(*key);
-                        }
-                        Action::Released => {
-                            self.pressed_keys.remove(key);
+        for event in self.window.poll().iter().rev() {
+            // FIXME: inputs with differing key enums are not being considered unique
+            // May no longer be needed after the refactor to use WindowEvent::id()
+            let is_kb = matches!(event, WindowEvent::KeyboardInput(_, _, _));
+            if seen_events.insert(event.id()) || is_kb {
+                match event {
+                    WindowEvent::FocusLost => {
+                        self.is_focused = false;
+                        self.pressed_keys.clear();
+                        self.mouse_delta = (0.0, 0.0);
+                    }
+                    WindowEvent::FocusGained => {
+                        self.is_focused = true;
+                    }
+                    WindowEvent::CloseRequested => {
+                        self.should_close = true;
+                    }
+                    WindowEvent::Resize { width, height } => {
+                        self.width = *width;
+                        self.height = *height;
+                        events.push(WindowEvent::FramebufferResize {
+                            width: (self.width as f32 * self.scale.0) as u32,
+                            height: (self.height as f32 * self.scale.1) as u32,
+                        });
+                    }
+                    WindowEvent::KeyboardInput(key, _, action) => {
+                        match action {
+                            Action::Pressed => {
+                                self.pressed_keys.insert(*key);
+                            }
+                            Action::Released => {
+                                self.pressed_keys.remove(key);
+                            }
                         }
                     }
-                }
-                WindowEvent::CursorPosition { mouse_x, mouse_y } => {
-                    if (*mouse_x, *mouse_y) != self.mouse_position {
-                        // Account for movement which occurs from set_cursor_position
-                        if self.cursor_move_pos == (*mouse_x as f32, *mouse_y as f32) {
-                            self.mouse_delta = (0.0, 0.0);
-                            continue;
+                    WindowEvent::CursorPosition { mouse_x, mouse_y } => {
+                        if (*mouse_x, *mouse_y) != self.mouse_position {
+                            // Account for movement which occurs from set_cursor_position
+                            if self.cursor_move_pos == (*mouse_x as f32, *mouse_y as f32) {
+                                self.mouse_delta = (0.0, 0.0);
+                                continue;
+                            }
+                            self.mouse_delta = (
+                                *mouse_x as f32 - self.mouse_position.0 as f32,
+                                *mouse_y as f32 - self.mouse_position.1 as f32,
+                            );
+                            self.mouse_position = (*mouse_x, *mouse_y);
                         }
-                        self.mouse_delta = (
-                            *mouse_x as f32 - self.mouse_position.0 as f32,
-                            *mouse_y as f32 - self.mouse_position.1 as f32,
-                        );
-                        self.mouse_position = (*mouse_x, *mouse_y);
                     }
+                    WindowEvent::ScaleFactorChanged { scale_x, scale_y } => {
+                        self.scale = (*scale_x, *scale_y);
+                    }
+                    _ => {}
                 }
-                WindowEvent::ScaleFactorChanged { scale_x, scale_y } => {
-                    self.scale = (*scale_x, *scale_y);
-                }
-                _ => {}
+                events.push(*event);
             }
         }
 
         return events;
     }
 
-    pub fn get_framebuffer_size(&self) -> (i32, i32) {
+    pub fn get_size(&self) -> (u32, u32) {
+        return (self.width, self.height);
+    }
+
+    pub fn get_framebuffer_size(&self) -> (u32, u32) {
         let x = self.width as f32 * self.scale.0;
         let y = self.height as f32 * self.scale.1;
-        return (x as i32, y as i32);
+        return (x as u32, y as u32);
     }
 
     pub fn key_pressed(&self, key: Key) -> bool {
