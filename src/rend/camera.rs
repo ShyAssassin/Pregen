@@ -66,6 +66,7 @@ impl Camera {
 
     pub fn update(&mut self, queue: &wgpu::Queue) {
         let view = Mat4::from_quat(self.transform.rotation.inverse()) * Mat4::from_translation(-self.transform.translation);
+        // FIXME: dont recalculate the projection matrix every frame, only when the transform changes
         let uniform = match self.projection {
             CameraProjection::Perspective => self.update_perspective(view),
             CameraProjection::Orthographic => self.update_orthographic(view),

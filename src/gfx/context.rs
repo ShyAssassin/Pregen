@@ -35,8 +35,9 @@ impl RenderContext {
             backend_options: wgpu::BackendOptions {
                 dx12: wgpu::Dx12BackendOptions {
                     shader_compiler: wgpu::Dx12Compiler::DynamicDxc {
+                        dxc_path: "bin/".into(),
                         dxil_path: "bin/".into(),
-                        dxc_path: "bin/".into()
+                        max_shader_model: wgpu::DxcShaderModel::V6_5,
                     }
                 },
                 ..Default::default()
@@ -60,9 +61,10 @@ impl RenderContext {
                 max_bind_groups: 4,
                 ..Default::default()
             },
+            trace: wgpu::Trace::Off,
             required_features: wgpu::Features::empty(),
             memory_hints: wgpu::MemoryHints::Performance,
-        }, None).await.expect("Failed to get device");
+        }).await.expect("Failed to get device");
 
         // on high DPI displays the framebuffer is larger than the window
         let buffer_size = window.get_framebuffer_size();
