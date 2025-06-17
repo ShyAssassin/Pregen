@@ -1,14 +1,43 @@
 use crate::WindowEvent;
 use crate::window::NativeWindow;
-use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, WindowHandle, HandleError};
+use raw_window_handle::{DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle};
+
+use x11rb::protocol::xproto::*;
+use x11rb::connection::Connection;
+use x11rb::wrapper::ConnectionExt as _;
+use x11rb::rust_connection::RustConnection;
+
+x11rb::atom_manager! {
+    pub Atoms: AtomsCookie {
+        WM_PROTOCOLS,
+        WM_DELETE_WINDOW,
+        _NET_WM_NAME,
+        UTF8_STRING,
+    }
+}
 
 #[derive(Debug)]
-pub struct X11Window;
+pub struct X11Window {
+    atoms: Atoms,
+    window: Window,
+    connection: RustConnection,
+}
 
 #[profiling::all_functions]
 impl NativeWindow for X11Window {
     fn init() -> Self {
-        todo!()
+        let (conn, screen_num) = x11rb::connect(None).expect("Failed to connect to X11 server");
+        let win_id = conn.generate_id().expect("Failed to generate window ID");
+        let atoms = Atoms::new(&conn).unwrap().reply().unwrap();
+        let screen = &conn.setup().roots[screen_num];
+
+        // conn.create_window();
+
+        return Self {
+            atoms: atoms,
+            window: win_id,
+            connection: conn,
+        };
     }
 
     fn show(&mut self) {
@@ -52,7 +81,20 @@ impl NativeWindow for X11Window {
     }
 
     fn set_title(&mut self, title: &str) {
-        todo!()
+        self.connection.change_property8(
+            PropMode::REPLACE,
+            self.window,
+            AtomEnum::WM_NAME,
+            AtomEnum::STRING,
+            title.as_bytes(),
+        ).expect("Failed to set window title");
+        self.connection.change_property8(
+            PropMode::REPLACE,
+            self.window,
+            self.atoms._NET_WM_NAME,
+            self.atoms.UTF8_STRING,
+            title.as_bytes(),
+        ).expect("Failed to set _NET_WM_NAME");
     }
 
     fn set_clipboard(&mut self, text: &str) {
