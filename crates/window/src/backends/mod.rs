@@ -18,6 +18,11 @@ mod x11;
 #[cfg(target_os = "linux")]
 pub use x11::X11Window;
 
+#[cfg(target_os = "linux")]
+mod wayland;
+#[cfg(target_os = "linux")]
+pub use wayland::WaylandWindow;
+
 #[derive(Debug, Clone, Copy)]
 #[derive(Eq, PartialEq, Hash)]
 pub enum WindowBackend {

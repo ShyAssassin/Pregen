@@ -88,6 +88,9 @@ impl NativeWindow for GlfwWindow {
                     events.push(WindowEvent::MouseButton(button.into(), action.into()));
                 }
                 GlfwWindowEvent::Key(key, code, action, _) => {
+                    // FIXME: pressing two at once will result in two events, one for each key
+                    // but there will not be two key up events, consider using GlfwWindowEvent::char
+                    // and then internally track the state of the keys, this may be fixed now in platform independent code
                     events.push(WindowEvent::KeyboardInput(key.into(), code as u32, action.into()));
                 }
                 GlfwWindowEvent::Scroll(x, y) => {

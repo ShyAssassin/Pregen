@@ -10,11 +10,12 @@ log = { workspace = true }
 profiling = { workspace = true }
 raw-window-handle = { workspace = true }
 
-[target.'cfg(target_os = "linux")'.dependencies]
-x11rb = { version = "0.13.1" }
-
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-glfw = { version = "0.59.0", features = ["wayland"] }
+glfw = { version = "0.59.0", features = ["log"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+wayland-client = { version = "0.31.10", features = ["log"] }
+x11rb = { version = "0.13.1", features = ["allow-unsafe-code"]}
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "winbase", "winerror", "errhandlingapi", "impl-default", "windowsx"] }
