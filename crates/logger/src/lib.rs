@@ -83,7 +83,7 @@ pub fn init() -> Result<(), SetLoggerError> {
         .collect::<Vec<_>>().join("\n");
 
         let trace = match std::env::var("RUST_BACKTRACE") {
-            Ok(_) => std::backtrace::Backtrace::force_capture().to_string(),
+            Ok(_) => std::backtrace::Backtrace::capture().to_string(),
             Err(_) => "  Run with RUST_BACKTRACE=1 environment variable to display backtrace".to_string(),
         };
         let trace = trace.lines().map(|line| format!("\t\t|{}", line)).collect::<Vec<_>>().join("\n");
