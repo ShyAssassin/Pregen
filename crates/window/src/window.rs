@@ -138,6 +138,11 @@ impl Window {
                 use crate::backends::X11Window;
                 Box::new(X11Window::init())
             }
+            #[cfg(target_os = "linux")]
+            WindowBackend::Wayland => {
+                use crate::backends::WaylandWindow;
+                Box::new(WaylandWindow::init())
+            }
             _ => panic!("Unsupported window backend selected: {:?}", backend),
         };
         window.show();

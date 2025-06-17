@@ -26,11 +26,12 @@ pub use wayland::WaylandWindow;
 #[derive(Debug, Clone, Copy)]
 #[derive(Eq, PartialEq, Hash)]
 pub enum WindowBackend {
-    Unkown,
-    Win32,
-    Glfw,
-    Web,
     X11,
+    Web,
+    Glfw,
+    Win32,
+    Unkown,
+    Wayland,
 }
 
 impl WindowBackend {
