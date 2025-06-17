@@ -31,6 +31,7 @@ pub struct Win32Window {
     hwnd: HWND,
     class: Vec<u16>,
     instance: HINSTANCE,
+    // FIXME: use a rc<refcell>
     state: Arc<Win32WindowState>,
 }
 
@@ -210,7 +211,6 @@ impl NativeWindow for Win32Window {
                 ..Default::default()
             };
 
-            RegisterClassW(&wnd_class);
             if RegisterClassW(&wnd_class) == 0 {
                 let error = GetLastError();
                 // We dont care if the class already exists
@@ -279,6 +279,7 @@ impl NativeWindow for Win32Window {
     fn lock_cursor(&mut self, lock: bool) {
         // This is technically a no-op since locking isnt a thing under windows
         // but to keep consistency with other platforms we will just hide the cursor
+        // TODO: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcapture
         self.set_cursor_visible(!lock);
     }
 
