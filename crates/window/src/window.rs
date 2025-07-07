@@ -239,6 +239,7 @@ impl Window {
                         }
                     }
                     WindowEvent::CursorPosition { mouse_x, mouse_y } => {
+                        // TODO: maybe check for the inverse of the mouse delta?
                         if (*mouse_x, *mouse_y) != self.mouse_position {
                             // Account for movement which occurs from set_cursor_position
                             if self.cursor_move_pos == (*mouse_x as f32, *mouse_y as f32) {
@@ -295,6 +296,10 @@ impl Window {
         let window: &dyn Any = &self.window;
         assert_eq!(self.backend, WindowBackend::Web);
         return window.downcast_ref::<WebWindow>().unwrap().canvas.clone();
+    }
+
+    pub fn native_window(&self) -> &Box<dyn NativeWindow> {
+        return &self.window
     }
 }
 

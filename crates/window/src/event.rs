@@ -55,7 +55,7 @@ impl Key {
         match digit {
             '0' => Key::Num0, '1' => Key::Num1, '2' => Key::Num2, '3' => Key::Num3, '4' => Key::Num4,
             '5' => Key::Num5, '6' => Key::Num6, '7' => Key::Num7, '8' => Key::Num8, '9' => Key::Num9,
-            _ => panic!("Unknown digit: {}", digit),
+            _ => unreachable!("Unknown digit: {}", digit),
         }
     }
 }
@@ -76,14 +76,14 @@ pub enum WindowEvent {
     /// The window has been forcefully closed
     Destroyed,
 
-    // The window has lost focus.
+    /// The window has lost focus.
     FocusLost,
     /// The window has gained focus.
     FocusGained,
 
-    // The window has been minimized.
+    /// The window has been minimized.
     Minimized,
-    // The window has maximized.
+    /// The window has maximized.
     Maximized,
 
     /// The user has pressed a key while within the window.
@@ -126,6 +126,7 @@ pub enum WindowEvent {
 
 impl WindowEvent {
     // FIXME: in a perfect world this would be static
+    /// Returns a unique identifier for events and their variants.
     pub fn id(&self) -> u64 {
         use std::collections::hash_map::DefaultHasher;
 

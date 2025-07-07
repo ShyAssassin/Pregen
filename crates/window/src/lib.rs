@@ -1,6 +1,6 @@
 mod event;
 mod window;
-mod backends;
+pub mod backends;
 
 pub use backends::WindowBackend;
 pub use window::{Window, NativeWindow};

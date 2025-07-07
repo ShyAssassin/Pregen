@@ -18,6 +18,7 @@ impl NativeWindow for GlfwWindow {
         }).expect("Failed to initialize GLFW");
 
         glfw.set_swap_interval(glfw::SwapInterval::None);
+        glfw.window_hint(glfw::WindowHint::SRgbCapable(true));
         glfw.window_hint(glfw::WindowHint::ScaleToMonitor(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
         let (mut window, events) = glfw.create_window(100, 100, "Pregen", glfw::WindowMode::Windowed).unwrap();
