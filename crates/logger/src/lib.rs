@@ -1,10 +1,10 @@
-use std::sync::{Mutex, OnceLock};
+use std::sync::{RwLock, OnceLock};
 use colored::{ColoredString, Colorize};
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 
 pub struct Logger {
-    pub log_level: Mutex<Level>,
-    pub crate_levels: Mutex<Vec<(String, Level)>>,
+    pub log_level: RwLock<Level>,
+    pub crate_levels: RwLock<Vec<(String, Level)>>,
 }
 
 static LOGGER: OnceLock<Logger> = OnceLock::new();
@@ -12,13 +12,13 @@ static LOGGER: OnceLock<Logger> = OnceLock::new();
 impl Logger {
     pub fn new(level: Level) -> Logger {
         Logger {
-            log_level: Mutex::new(level),
-            crate_levels: Mutex::new(Vec::new()),
+            log_level: RwLock::new(level),
+            crate_levels: RwLock::new(Vec::new()),
         }
     }
 
     pub fn set_level(&self, level: Level) {
-        *self.log_level.lock().unwrap() = level;
+        *self.log_level.write().unwrap() = level;
     }
 
     pub fn colorize(&self, level: Level) -> ColoredString {
@@ -34,8 +34,8 @@ impl Logger {
 
 impl Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
-        let log_level = *self.log_level.lock().unwrap();
-        let crate_levels = self.crate_levels.lock().unwrap();
+        let log_level = *self.log_level.read().unwrap();
+        let crate_levels = self.crate_levels.read().unwrap();
         let crate_name = metadata.target().split("::").next().unwrap();
         // FIXME: depending on order added crate::module may inherit the level of crate
         for (name, level) in crate_levels.iter() {
@@ -98,7 +98,7 @@ pub fn set_level(level: Level) {
 }
 
 pub fn set_crate_log(target: &str, level: Level) {
-    LOGGER.get().unwrap().crate_levels.lock().unwrap().push((target.to_string(), level));
+    LOGGER.get().unwrap().crate_levels.write().unwrap().push((target.to_string(), level));
 }
 
 pub fn get_raw_logger() -> &'static Logger {
