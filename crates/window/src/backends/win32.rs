@@ -195,6 +195,8 @@ impl Win32Window {
 #[profiling::all_functions]
 impl NativeWindow for Win32Window {
     fn init() -> Self {
+        // TODO: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setprocessdpiawarenesscontext
+        // TODO: https://learn.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows
         unsafe {
             let mut window: Win32Window = Self::null();
             let h_instance = GetModuleHandleW(null_mut());
@@ -277,10 +279,13 @@ impl NativeWindow for Win32Window {
     }
 
     fn lock_cursor(&mut self, lock: bool) {
-        // This is technically a no-op since locking isnt a thing under windows
-        // but to keep consistency with other platforms we will just hide the cursor
-        // TODO: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setcapture
-        self.set_cursor_visible(!lock);
+        if lock == true {
+            self.set_cursor_visible(false);
+            unsafe { SetCapture(self.hwnd) };
+        } else {
+            unsafe { ReleaseCapture() };
+            self.set_cursor_visible(true);
+        }
     }
 
     fn poll(&mut self) -> Vec<WindowEvent> {
