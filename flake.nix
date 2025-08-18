@@ -19,8 +19,9 @@
         ];
 
         shellHook = ''
-          rustup default 1.85.1
+          rustup default stable
           rustup target add x86_64-pc-windows-gnu
+          export ENABLE_VULKAN_RENDERDOC_CAPTURE=1
           export CARGO_BUILD_TARGET="x86_64-pc-windows-gnu"
           rustup component add rust-std rust-src rust-analyzer
           # GOD ONLY KNOWS WHY THIS IS NECESSARY BUT IT IS AND I HATE IT
@@ -31,7 +32,7 @@
 
       x86_64-linux.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
-          tracy lldb valgrind
+          wgpu-utils tracy lldb valgrind
 
           # Build dependencies
           pkg-config unzip extra-cmake-modules
