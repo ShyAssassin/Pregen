@@ -17,6 +17,34 @@ use window::{Key, Action, Window, WindowBackend, WindowEvent};
 #[cfg(feature = "profiling")]
 static GLOBAL: tracy_client::ProfiledAllocator<std::alloc::System> = tracy_client::ProfiledAllocator::new(std::alloc::System, 100);
 
+fn main() {
+    logger::init().unwrap();
+    logger::set_crate_log("wgpu", Level::Warn);
+    logger::set_crate_log("naga", Level::Error);
+    logger::set_crate_log("wgpu_hal", Level::Warn);
+    logger::set_crate_log("wgpu_core", Level::Warn);
+
+    if std::env::var("RUNNER").is_err() {
+        std::env::set_var("RUNNER", "gfx-ne");
+        log::warn!("No RUNNER environment variable set, defaulting to gfx-ne");
+    }
+    log::info!("Running with runner: {}", std::env::var("RUNNER").unwrap());
+
+    match std::env::var("RUNNER").unwrap().to_lowercase().as_str() {
+        "gfx" => {
+            block_on(wgpu_test());
+        }
+        "gfx-ne" => {
+            block_on(gfx_ne_test());
+        }
+        _ => {
+            log::error!("Unknown runner specified, please set RUNNER to either 'gfx' or 'gfx-ne'");
+            return;
+        }
+    }
+}
+
+
 struct FlyCamera {
     pub speed: f32,
     pub sensitivity: f32,
@@ -160,16 +188,6 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
     return (pipeline, bind_group)
 }
 
-fn main() {
-    logger::init().unwrap();
-    logger::set_crate_log("wgpu", Level::Warn);
-    logger::set_crate_log("naga", Level::Error);
-    logger::set_crate_log("wgpu_hal", Level::Warn);
-    logger::set_crate_log("wgpu_core", Level::Warn);
-
-    block_on(wgpu_test());
-}
-
 // TODO: not this make abstraction
 async fn wgpu_test() {
     let mut window = Window::new("Pregen: Runtime", 800, 800, true, WindowBackend::preferred());
@@ -188,6 +206,7 @@ async fn wgpu_test() {
     dbg!(&shader);
     let mut camera = rend::Camera::new(&mut context, rend::CameraProjection::Perspective, CameraDescriptor {
         aspect_ratio: window.get_aspect_ratio(),
+        z_near: 0.001,
         ..Default::default()
     });
     camera.transform.translation.z = 3.0;
@@ -195,6 +214,19 @@ async fn wgpu_test() {
     let mut camera = FlyCamera::new(camera, 0.001, 0.001);
     let model = Model::from_path(&mut context, Some("Backpack"), "backpack/backpack.obj", Transform::default());
     let mut frame_bind = context.create_bind_group::<GlobalBindGroup>(None);
+    let lights = (0..8).map(|_| {
+        rend::LightingUniform {
+            _padding: 0.0,
+            position: glam::Vec3::new(
+                rand::random::<f32>() * 10.0 - 5.0,
+                rand::random::<f32>() * 10.0 - 5.0,
+                rand::random::<f32>() * 10.0 - 5.0
+            ),
+            intensity: rand::random::<f32>().abs(),
+            color: glam::Vec3::new(rand::random::<f32>().abs(), rand::random::<f32>().abs(), rand::random::<f32>().abs()),
+        }
+    }).collect::<Vec<_>>();
+    frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 8 lights"));
     let pipeline = context.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Render pipeline"),
         cache: None,
@@ -249,7 +281,7 @@ async fn wgpu_test() {
         }),
         primitive: wgpu::PrimitiveState {
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: Some(wgpu::Face::Back),
+            cull_mode: None!(wgpu::Face::Back),
             topology: wgpu::PrimitiveTopology::TriangleList,
             ..Default::default()
         },
@@ -398,3 +430,4 @@ async fn wgpu_test() {
         frame += 0.001;
     };
 }
+

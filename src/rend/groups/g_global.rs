@@ -1,7 +1,7 @@
 use glam::Vec2;
 use crate::gfx::UniformBuffer;
 use crate::impl_bind_group_state;
-use crate::rend::{KeyboardUniform, MouseUniform, CoordinatesUniform};
+use crate::rend::{KeyboardUniform, MouseUniform, CoordinatesUniform, LightingUniform};
 
 pub struct GlobalBindGroup {
     pub u_time: UniformBuffer<f32>,
@@ -10,6 +10,7 @@ pub struct GlobalBindGroup {
     pub u_resolution: UniformBuffer<Vec2>,
     pub u_mouse: UniformBuffer<MouseUniform>,
     pub u_keyboard: UniformBuffer<KeyboardUniform>,
+    pub u_lights: UniformBuffer<[LightingUniform; 8]>,
     pub u_coordinates: UniformBuffer<CoordinatesUniform>,
 }
 
@@ -31,4 +32,6 @@ impl_bind_group_state!(
     u_keyboard: KeyboardUniform, 5,
     "Coordinate System",
     u_coordinates: CoordinatesUniform, 6,
+    "Lighting",
+    u_lights: [LightingUniform; 8], 7
 );
