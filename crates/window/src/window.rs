@@ -38,6 +38,7 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     /// Lock the cursor to the window and prepare for mouse move events
     /// - Platforms without a cursor can safely ignore this call
     /// - On platforms with a visible cursor, the cursor should be hidden
+    /// - When the cursor is locked, the cursor should not be able to leave the window
     fn lock_cursor(&mut self, lock: bool);
 
     /// Poll the underlying native window for any events that have occurred since the last poll
@@ -239,17 +240,17 @@ impl Window {
                         }
                     }
                     WindowEvent::CursorPosition { mouse_x, mouse_y } => {
-                        // TODO: maybe check for the inverse of the mouse delta?
                         if (*mouse_x, *mouse_y) != self.mouse_position {
+                            // TODO: maybe check for inversed mouse delta here instead?
                             // Account for movement which occurs from set_cursor_position
-                            if self.cursor_move_pos == (*mouse_x as f32, *mouse_y as f32) {
+                            if self.cursor_move_pos != (*mouse_x as f32, *mouse_y as f32) {
+                                self.mouse_delta = (
+                                    *mouse_x as f32 - self.mouse_position.0 as f32,
+                                    *mouse_y as f32 - self.mouse_position.1 as f32,
+                                );
+                            } else {
                                 self.mouse_delta = (0.0, 0.0);
-                                continue;
                             }
-                            self.mouse_delta = (
-                                *mouse_x as f32 - self.mouse_position.0 as f32,
-                                *mouse_y as f32 - self.mouse_position.1 as f32,
-                            );
                             self.mouse_position = (*mouse_x, *mouse_y);
                         }
                     }
