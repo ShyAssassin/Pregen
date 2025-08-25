@@ -153,13 +153,13 @@ impl NativeWindow for GlfwWindow {
 }
 
 impl HasDisplayHandle for GlfwWindow {
-    fn display_handle(&self) -> Result<DisplayHandle, HandleError> {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
         return self.window.display_handle();
     }
 }
 
 impl HasWindowHandle for GlfwWindow {
-    fn window_handle(&self) -> Result<WindowHandle, HandleError> {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
         return self.window.window_handle();
     }
 }

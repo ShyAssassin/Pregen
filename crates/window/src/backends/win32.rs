@@ -22,6 +22,7 @@ use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 #[derive(Debug)]
 struct Win32WindowState {
     pub cursor_visible: Mutex<bool>,
+    // FIXME: use a channel
     pub events: Mutex<Vec<WindowEvent>>,
     pub cursor_move_pos: Mutex<(i32, i32)>,
 }
@@ -451,7 +452,7 @@ impl NativeWindow for Win32Window {
 }
 
 impl HasWindowHandle for Win32Window {
-    fn window_handle(&self) -> Result<WindowHandle, HandleError> {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
         unsafe {
             let mut handle = Win32WindowHandle::new(NonZero::new(self.hwnd as isize).unwrap());
             handle.hinstance = NonZero::new(self.instance as isize);
@@ -461,7 +462,7 @@ impl HasWindowHandle for Win32Window {
 }
 
 impl HasDisplayHandle for Win32Window {
-    fn display_handle(&self) -> Result<DisplayHandle, HandleError> {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
         return Ok(DisplayHandle::windows());
     }
 }
