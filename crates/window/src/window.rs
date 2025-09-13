@@ -202,6 +202,8 @@ impl Window {
 
     pub fn poll(&mut self) -> Vec<WindowEvent> {
         let mut events = Vec::new();
+        // reset delta from last poll
+        self.mouse_delta = (0.0, 0.0);
         let mut seen_events = HashSet::new();
 
         for event in self.window.poll().iter().rev() {
@@ -217,6 +219,8 @@ impl Window {
                     }
                     WindowEvent::FocusGained => {
                         self.is_focused = true;
+                        self.pressed_keys.clear();
+                        self.mouse_delta = (0.0, 0.0);
                     }
                     WindowEvent::CloseRequested => {
                         self.should_close = true;
@@ -244,12 +248,9 @@ impl Window {
                             // TODO: maybe check for inversed mouse delta here instead?
                             // Account for movement which occurs from set_cursor_position
                             if self.cursor_move_pos != (*mouse_x as f32, *mouse_y as f32) {
-                                self.mouse_delta = (
-                                    *mouse_x as f32 - self.mouse_position.0 as f32,
-                                    *mouse_y as f32 - self.mouse_position.1 as f32,
-                                );
-                            } else {
-                                self.mouse_delta = (0.0, 0.0);
+                                let dx = *mouse_x as f32 - self.mouse_position.0 as f32;
+                                let dy = *mouse_y as f32 - self.mouse_position.1 as f32;
+                                self.mouse_delta = (self.mouse_delta.0 + dx, self.mouse_delta.1 + dy);
                             }
                             self.mouse_position = (*mouse_x, *mouse_y);
                         }
