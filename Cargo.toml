@@ -11,6 +11,7 @@ members = [
     "crates/gfx",
     "crates/logger",
     "crates/window",
+    "crates/virtfs",
 ]
 
 [workspace.dependencies]
