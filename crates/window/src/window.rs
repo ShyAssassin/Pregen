@@ -260,7 +260,9 @@ impl Window {
                     }
                     _ => {}
                 }
+
                 events.push(*event);
+                log::trace!("Window Event: {:?}", event);
             }
         }
 
