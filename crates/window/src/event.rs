@@ -93,7 +93,10 @@ pub enum WindowEvent {
     MouseButton(MouseButton, Action),
 
     /// The user has scrolled the mouse wheel.
-    MouseWheel(f32, f32),
+    MouseWheel {
+        scroll_x: f32,
+        scroll_y: f32,
+    },
 
     /// The Mouse has moved within the window.
     CursorPosition {

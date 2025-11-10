@@ -95,7 +95,10 @@ impl NativeWindow for GlfwWindow {
                     events.push(WindowEvent::KeyboardInput(key.into(), code as u32, action.into()));
                 }
                 GlfwWindowEvent::Scroll(x, y) => {
-                    events.push(WindowEvent::MouseWheel(x as f32, y as f32));
+                    events.push(WindowEvent::MouseWheel {
+                        scroll_x: x as f32,
+                        scroll_y: y as f32
+                    });
                 }
                 _ => {
                     log::warn!("Unhandled event: {:?}", event);
