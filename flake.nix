@@ -19,7 +19,7 @@
         ];
 
         shellHook = ''
-          rustup default stable
+          rustup default 1.90.0
           rustup target add x86_64-pc-windows-gnu
           export ENABLE_VULKAN_RENDERDOC_CAPTURE=1
           export CARGO_BUILD_TARGET="x86_64-pc-windows-gnu"
@@ -51,10 +51,9 @@
         ];
 
         shellHook = ''
-          rustup default 1.85.1
+          rustup default 1.90.0
           rustup component add rust-src rust-std
           rustup component add rust-docs rust-analyzer
-          cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --rev v0.9.5 wgsl_analyzer
           export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
           export RUSTFLAGS="$RUSTFLAGS -C linker=${pkgs.clang}/bin/clang -C link-arg=-fuse-ld=${pkgs.mold}/bin/mold"
         '';
