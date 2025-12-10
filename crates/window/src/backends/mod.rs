@@ -51,4 +51,18 @@ impl WindowBackend {
 
         unreachable!("Compiler platform has no preferred window backend");
     }
+
+    pub fn from_env() -> Self {
+        let backend = std::env::var("WINDOW_BACKEND").unwrap_or_else(|_| {
+            "preferred".to_string()
+        }).to_lowercase();
+
+        match backend.as_str() {
+            "x11" => WindowBackend::X11,
+            "glfw" => WindowBackend::Glfw,
+            "win32" => WindowBackend::Win32,
+            "wayland" => WindowBackend::Wayland,
+            "preferred" | _ => Self::preferred(),
+        }
+    }
 }
