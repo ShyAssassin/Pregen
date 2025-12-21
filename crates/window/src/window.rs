@@ -135,7 +135,7 @@ pub struct Window {
 
 #[profiling::all_functions]
 impl Window {
-    pub fn new(name: &str, width: u32, height: u32, resizeable: bool, backend: WindowBackend) -> Self {
+    pub fn new(title: &str, width: u32, height: u32, resizeable: bool, backend: WindowBackend) -> Self {
         log::info!("Creating window with backend: {:?}", backend);
         let mut window: Box<dyn NativeWindow> = match backend {
             #[cfg(not(target_family = "wasm"))]
@@ -165,49 +165,32 @@ impl Window {
             }
             _ => panic!("Unsupported window backend selected: {:?}", backend),
         };
+
         window.show();
-        window.set_title(name);
+        window.set_title(title);
         window.resize(width, height);
         window.set_resizeable(resizeable);
-        let scale = window.get_content_scale();
-        let (fwidth, fheight) = window.get_size();
+        return Self::from_native(title, window, backend);
+    }
 
-        let fwidth = fwidth * scale.0 as u32;
-        let fheight = fheight * scale.1 as u32;
-        log::debug!("Content scale: {:?}", scale);
-        log::debug!("Window size: {}x{}", width, height);
-        log::debug!("Framebuffer size: {}x{}", fwidth, fheight);
-
+    pub fn from_native(title: &str, window: Box<dyn NativeWindow>, backend: WindowBackend) -> Self {
+        let size = window.get_size();
         let focus = window.is_focused();
+        let scale = window.get_content_scale();
+        let fbwidth = (size.0 as f32 * scale.0) as u32;
+        let fbheight = (size.1 as f32 * scale.1) as u32;
+
+        log::debug!("Content scale: {:?}", scale);
+        log::debug!("Window size: {}x{}", size.0, size.1);
+        log::debug!("Framebuffer size: {}x{}", fbwidth, fbheight);
+
         return Self {
-            title: name.to_string(),
+            title: title.to_string(),
             backend: backend,
             window: window,
             scale: scale,
-            width: fwidth,
-            height: fheight,
-            is_focused: focus,
-            lock_cursor: false,
-            should_close: false,
-            cursor_visible: true,
-            mouse_position: (0, 0),
-            mouse_delta: (0.0, 0.0),
-            cursor_move_pos: (0.0, 0.0),
-            pressed_keys: HashSet::new(),
-        };
-    }
-
-    pub fn from_native_window(window: Box<dyn NativeWindow>) -> Self {
-        let focus = window.is_focused();
-        let scale = window.get_content_scale();
-        let (fwidth, fheight) = window.get_size();
-        return Self {
-            title: "Unnamed Window".to_string(),
-            backend: WindowBackend::Unkown,
-            window: window,
-            scale: scale,
-            width: fwidth,
-            height: fheight,
+            width: fbwidth,
+            height: fbheight,
             is_focused: focus,
             lock_cursor: false,
             should_close: false,
