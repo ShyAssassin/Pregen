@@ -98,7 +98,7 @@ impl Win32Window {
                     rect.left, rect.top,
                     rect.right - rect.left,
                     rect.bottom - rect.top,
-                    SWP_NOZORDER | SWP_NOMOVE | SWP_FRAMECHANGED
+                    SWP_NOZORDER | SWP_FRAMECHANGED
                 );
 
                 let dpi = f32::from(HIWORD(w_param as u32));
@@ -315,7 +315,7 @@ impl NativeWindow for Win32Window {
             let mut rect = std::mem::zeroed();
             GetWindowRect(self.hwnd, &mut rect);
             let mut client_rect = std::mem::zeroed();
-            GetWindowRect(self.hwnd, &mut client_rect);
+            GetClientRect(self.hwnd, &mut client_rect);
 
             let style = GetWindowLongPtrW(self.hwnd, GWL_STYLE);
             AdjustWindowRect(&mut rect, style as u32, false as i32);
@@ -417,7 +417,7 @@ impl NativeWindow for Win32Window {
                 style | WS_OVERLAPPEDWINDOW
             } else {
                 // FIXME: is this correct?
-                style & !WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MINIMIZEBOX | WS_OVERLAPPED
+                (style & !WS_OVERLAPPEDWINDOW) | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_OVERLAPPED
             };
             SetWindowLongPtrW(self.hwnd, GWL_STYLE, new_style as LONG_PTR);
             SetWindowPos(self.hwnd, null_mut(), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOZORDER | SWP_NOSIZE | SWP_FRAMECHANGED);
@@ -446,7 +446,7 @@ impl NativeWindow for Win32Window {
             let mut point = POINT { x: 0, y: 0 };
             GetCursorPos(&mut point);
             ScreenToClient(self.hwnd, &mut point);
-            return (point.x as u32, point.y as u32);
+            return (point.x.max(0) as u32, point.y.max(0) as u32);
         }
     }
 }
