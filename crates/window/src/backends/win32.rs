@@ -142,8 +142,8 @@ impl Win32Window {
                 let mouse_y = GET_Y_LPARAM(l_param);
                 // Should probably move over to the rawinput windows API for this stuff
                 state.events.lock().unwrap().push(WindowEvent::CursorPosition {
-                    mouse_x: mouse_x as u32,
-                    mouse_y: mouse_y as u32
+                    mouse_x: mouse_x as f64,
+                    mouse_y: mouse_y as f64
                 });
                 return LRESULT::from(0u8);
                 // FIXME: sometimes the cursor doesnt allign with the actual position

@@ -100,8 +100,8 @@ pub enum WindowEvent {
 
     /// The Mouse has moved within the window.
     CursorPosition {
-        mouse_x: u32,
-        mouse_y: u32,
+        mouse_x: f64,
+        mouse_y: f64,
     },
 
     /// The window's scale factor has changed.

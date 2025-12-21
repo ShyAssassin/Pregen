@@ -49,7 +49,7 @@ impl WindowBackend {
         #[cfg(target_os = "macos")]
         return WindowBackend::Glfw;
 
-        unreachable!("Compiler platform has no preferred window backend");
+        unreachable!("platform has no preferred window backend");
     }
 
     pub fn from_env() -> Self {

@@ -128,7 +128,7 @@ pub struct Window {
     should_close: bool,
     cursor_visible: bool,
     mouse_delta: (f32, f32),
-    mouse_position: (u32, u32),
+    mouse_position: (f64, f64),
     pressed_keys: HashSet<Key>,
     cursor_move_pos: (f32, f32),
 }
@@ -212,8 +212,8 @@ impl Window {
             lock_cursor: false,
             should_close: false,
             cursor_visible: true,
-            mouse_position: (0, 0),
             mouse_delta: (0.0, 0.0),
+            mouse_position: (0.0, 0.0),
             cursor_move_pos: (0.0, 0.0),
             pressed_keys: HashSet::new(),
         };
@@ -362,9 +362,9 @@ impl Window {
         if self.is_focused {
             if self.lock_cursor {
                 if self.get_cursor_position() != (x, y) {
-                    self.mouse_position = (x, y);
                     self.mouse_delta = (0.0, 0.0);
                     self.window.set_cursor_position(x, y);
+                    self.mouse_position = (x as f64, y as f64);
                     self.cursor_move_pos = (x as f32, y as f32);
                 }
                 return;

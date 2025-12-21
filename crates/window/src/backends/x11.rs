@@ -1,3 +1,8 @@
+// SHUT THE FUCK UP
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+
 use crate::WindowEvent;
 use crate::window::NativeWindow;
 use raw_window_handle::{DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle};

@@ -65,7 +65,10 @@ impl NativeWindow for GlfwWindow {
                     // HACK: On Systems with async window resizing the resize event is fired over multiple frames
                     // To avoid this we poll the window size until it is no longer changing, still spams but not as much
                     events.append(&mut self.poll());
-                    events.push(WindowEvent::Resize { width: width as u32, height: height as u32 });
+                    events.push(WindowEvent::Resize {
+                        width: width as u32,
+                        height: height as u32
+                    });
                 }
                 GlfwWindowEvent::ContentScale(scale_x, scale_y) => {
                     events.push(WindowEvent::ScaleFactorChanged { scale_x, scale_y });
@@ -83,7 +86,10 @@ impl NativeWindow for GlfwWindow {
                     events.push(WindowEvent::Minimized);
                 }
                 GlfwWindowEvent::CursorPos(x, y) => {
-                    events.push(WindowEvent::CursorPosition { mouse_x: x as u32, mouse_y: y as u32 });
+                    events.push(WindowEvent::CursorPosition {
+                        mouse_x: x.max(0.0),
+                        mouse_y: y.max(0.0),
+                    });
                 }
                 GlfwWindowEvent::MouseButton(button, action, _) => {
                     events.push(WindowEvent::MouseButton(button.into(), action.into()));
@@ -151,7 +157,7 @@ impl NativeWindow for GlfwWindow {
 
     fn get_cursor_position(&self) -> (u32, u32) {
         let (x, y) = self.window.get_cursor_pos();
-        return (x as u32, y as u32);
+        return (x.max(0.0) as u32, y.max(0.0) as u32);
     }
 }
 
