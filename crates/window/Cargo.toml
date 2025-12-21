@@ -2,9 +2,6 @@
 name = "window"
 edition = "2021"
 
-[features]
-# raw_window_handle = ["raw-window-handle", "glfw/raw-window-handle-v0-6"]
-
 [dependencies]
 log = { workspace = true }
 profiling = { workspace = true }
@@ -14,8 +11,10 @@ raw-window-handle = { workspace = true }
 glfw = { version = "0.59.0", features = ["log"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-wayland-client = { version = "0.31.10", features = ["log"] }
-x11rb = { version = "0.13.1", features = ["allow-unsafe-code"]}
+wayland-client = { version = "0.31.11", features = ["log"] }
+x11rb = { version = "0.13.1", features = ["allow-unsafe-code"] }
+wayland-protocols = { version = "0.32.9", features = ["client"] }
+wayland-backend = { version = "0.3.11", features = ["client_system"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser", "winbase", "winerror", "errhandlingapi", "impl-default", "windowsx"] }
