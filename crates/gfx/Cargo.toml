@@ -7,8 +7,9 @@ edition = "2021"
 log = { workspace = true }
 bytemuck = { workspace = true }
 profiling = { workspace = true }
+gfx-macros = { path = "./macro" }
 raw-window-handle = { workspace = true }
 wgpu = { workspace = true, features = ["spirv"] }
 
 [build-dependencies]
-serde_json = {version = "1.0.133"}
+serde_json = { version = "1.0.133" }
