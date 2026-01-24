@@ -1,9 +1,11 @@
 use crate::Device;
 use raw_window_handle::HasWindowHandle;
 use raw_window_handle::HasDisplayHandle;
+use std::sync::atomic::{Ordering, AtomicU64};
 
 pub struct Surface {
     pub device: Device,
+    pub generation: AtomicU64,
     pub surface: wgpu::Surface<'static>,
     pub handle: wgpu::SurfaceTargetUnsafe,
     pub config: wgpu::SurfaceConfiguration,
@@ -46,6 +48,7 @@ impl Surface {
             config: config,
             handle: wshandle,
             surface: surface,
+            generation: AtomicU64::new(0),
         };
     }
 
@@ -54,6 +57,7 @@ impl Surface {
             if (width, height) != (self.config.width, self.config.height) {
                 self.config.width = width;
                 self.config.height = height;
+                self.generation.fetch_add(1, Ordering::Release);
                 log::debug!("Surface resized to ({},{})", width, height);
                 self.surface.configure(&self.device.device, &self.config);
             } else {
@@ -78,5 +82,14 @@ impl Surface {
 
     pub fn format(&self) -> wgpu::TextureFormat {
         return self.config.format;
+    }
+
+    pub fn generation(&self) -> u64 {
+        return self.generation.load(Ordering::Acquire);
+    }
+
+    pub fn reconfigure(&mut self) {
+        self.generation.fetch_add(1, Ordering::Release);
+        self.surface.configure(&self.device.device, &self.config);
     }
 }
