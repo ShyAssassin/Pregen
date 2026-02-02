@@ -114,6 +114,8 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     fn set_cursor_position(&mut self, x: u32, y: u32);
 }
 
+// FIXME: I am an idiot and have used window size
+// interchangeably with framebuffer size please fix
 pub struct Window {
     width: u32,
     height: u32,
@@ -270,7 +272,9 @@ impl Window {
 
         return events;
     }
+}
 
+impl Window {
     pub fn get_size(&self) -> (u32, u32) {
         return (self.width, self.height);
     }
@@ -405,6 +409,125 @@ impl HasWindowHandle for Window {
 }
 
 impl HasDisplayHandle for Window {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
+        return self.window.display_handle();
+    }
+}
+
+
+pub struct WinNew {
+    title: String,
+    size: (u32, u32),
+    scale: (f32, f32),
+    fbsize: (u32, u32),
+    backend: WindowBackend,
+    window: Box<dyn NativeWindow>,
+}
+
+impl WinNew {
+    pub fn new(title: &str, size: (u32, u32), backend: WindowBackend) -> Self {
+        log::info!("Creating window with backend: {:?}", backend);
+        let mut window: Box<dyn NativeWindow> = match backend {
+            #[cfg(not(target_family = "wasm"))]
+            WindowBackend::Glfw => {
+                use crate::backends::GlfwWindow;
+                Box::new(GlfwWindow::init())
+            }
+            #[cfg(target_family = "windows")]
+            WindowBackend::Win32 => {
+                use crate::backends::Win32Window;
+                Box::new(Win32Window::init())
+            },
+            #[cfg(target_family = "wasm")]
+            WindowBackend::Web => {
+                use crate::backends::WebWindow;
+                Box::new(WebWindow::init())
+            },
+            #[cfg(target_os = "linux")]
+            WindowBackend::X11 => {
+                use crate::backends::X11Window;
+                Box::new(X11Window::init())
+            }
+            #[cfg(target_os = "linux")]
+            WindowBackend::Wayland => {
+                use crate::backends::WaylandWindow;
+                Box::new(WaylandWindow::init())
+            }
+            _ => panic!("Unsupported window backend selected: {:?}", backend),
+        };
+
+        window.resize(size.0, size.1);
+        return Self::from_native(title, backend, window);
+    }
+
+    pub fn from_native(title: &str, backend: WindowBackend, window: Box<dyn NativeWindow>) -> Self {
+        let size = window.get_size();
+        let focus = window.is_focused();
+        let dpi = window.get_content_scale();
+        let fbwidth = (size.0 as f32 * dpi.0) as u32;
+        let fbheight = (size.1 as f32 * dpi.1) as u32;
+
+        todo!()
+    }
+
+    pub fn poll(&mut self) -> Vec<WindowEvent> {
+        let mut events = Vec::new();
+
+        return events;
+    }
+}
+
+impl WinNew {
+    pub fn dpi(&self) -> f32 {
+        return self.scale.0;
+    }
+
+    pub fn title(&self) -> &str {
+        return &self.title;
+    }
+
+    pub fn backend(&self) -> WindowBackend {
+        return self.backend;
+    }
+
+    pub fn aspect_ratio(&self) -> f32 {
+        return self.width() as f32 / self.height() as f32;
+    }
+}
+
+impl WinNew {
+    pub fn width(&self) -> u32 {
+        return self.size.0;
+    }
+
+    pub fn height(&self) -> u32 {
+        return self.size.1;
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        return (self.width(), self.height());
+    }
+
+    pub fn framebuffer_width(&self) -> u32 {
+        return self.fbsize.0;
+    }
+
+    pub fn framebuffer_height(&self) -> u32 {
+        return self.fbsize.1;
+    }
+
+    pub fn framebuffer_size(&self) -> (u32, u32) {
+        return (self.framebuffer_width(), self.framebuffer_height());
+    }
+}
+
+impl HasWindowHandle for WinNew {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
+        return self.window.window_handle();
+    }
+}
+
+impl HasDisplayHandle for WinNew {
     fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
         return self.window.display_handle();
     }
