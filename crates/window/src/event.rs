@@ -135,18 +135,26 @@ impl WindowEvent {
 
         let mut hasher = DefaultHasher::new();
         match self {
-            WindowEvent::MouseButton(button, _) => {
+            WindowEvent::MouseButton(button, action) => {
                 std::mem::discriminant(self).hash(&mut hasher);
                 button.hash(&mut hasher);
+                action.hash(&mut hasher);
             }
-            WindowEvent::KeyboardInput(_, keycode, _) => {
+            WindowEvent::KeyboardInput(key, keycode, action) => {
                 std::mem::discriminant(self).hash(&mut hasher);
+                key.hash(&mut hasher);
+                action.hash(&mut hasher);
                 keycode.hash(&mut hasher);
+            }
+            WindowEvent::CursorPosition { mouse_x, mouse_y } => {
+                std::mem::discriminant(self).hash(&mut hasher);
+                mouse_x.to_bits().hash(&mut hasher);
+                mouse_y.to_bits().hash(&mut hasher);
             }
             _ => {
                 std::mem::discriminant(self).hash(&mut hasher);
             }
         }
-        return hasher.finish();
+        hasher.finish()
     }
 }
