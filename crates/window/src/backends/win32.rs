@@ -112,12 +112,13 @@ impl Win32Window {
             WM_SIZE => {
                 let width = LOWORD(l_param as u32) as u32;
                 let height = HIWORD(l_param as u32) as u32;
+                let mut queue = state.events.lock().unwrap();
                 match w_param {
-                    SIZE_MINIMIZED => state.events.lock().unwrap().push(WindowEvent::Minimized),
-                    SIZE_MAXIMIZED => state.events.lock().unwrap().push(WindowEvent::Maximized),
+                    SIZE_MINIMIZED => queue.push(WindowEvent::Minimized),
+                    SIZE_MAXIMIZED => queue.push(WindowEvent::Maximized),
                     _ => {}
                 }
-                state.events.lock().unwrap().push(WindowEvent::Resize { width, height });
+                queue.push(WindowEvent::Resize { width, height });
                 return LRESULT::from(0u8);
             }
 
@@ -140,11 +141,15 @@ impl Win32Window {
             WM_MOUSEMOVE => {
                 let mouse_x = GET_X_LPARAM(l_param);
                 let mouse_y = GET_Y_LPARAM(l_param);
-                // Should probably move over to the rawinput windows API for this stuff
-                state.events.lock().unwrap().push(WindowEvent::CursorPosition {
-                    mouse_x: mouse_x as f64,
-                    mouse_y: mouse_y as f64
-                });
+
+                let last_set_pos = *state.cursor_move_pos.lock().unwrap();
+                if mouse_x != last_set_pos.0 || mouse_y != last_set_pos.1 {
+                    // Should probably move over to the rawinput windows API for this stuff
+                    state.events.lock().unwrap().push(WindowEvent::CursorPosition {
+                        mouse_x: mouse_x as f64,
+                        mouse_y: mouse_y as f64
+                    });
+                }
                 return LRESULT::from(0u8);
             }
 
@@ -284,13 +289,11 @@ impl NativeWindow for Win32Window {
     fn poll(&mut self) -> Vec<WindowEvent> {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
-            while PeekMessageW(&mut msg, null_mut(), 0, 0, PM_REMOVE) > 0 {
+            while PeekMessageW(&mut msg, self.hwnd, 0, 0, PM_REMOVE) > 0 {
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
-                match msg.message {
-                    _ => { }
-                };
             }
+
             // We need to perform the standard message loop of win32 first to not softlock the mutex
             // This mutex is kinda slow and should be replaced with a lock free alternative
             let mut queue = self.state.events.lock().unwrap();
@@ -418,8 +421,8 @@ impl NativeWindow for Win32Window {
 
     fn set_cursor_visible(&mut self, visible: bool) {
         unsafe {
-            *(self.state.cursor_visible.lock().unwrap()) = visible;
-            let cursor = if visible { LoadCursorW(self.instance, IDC_ARROW) } else { null_mut() };
+            *self.state.cursor_visible.lock().unwrap() = visible;
+            let cursor = if visible { LoadCursorW(null_mut(), IDC_ARROW) } else { null_mut() };
             SetCursor(cursor);
         }
     }
