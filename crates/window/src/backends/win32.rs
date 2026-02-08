@@ -146,14 +146,6 @@ impl Win32Window {
                     mouse_y: mouse_y as f64
                 });
                 return LRESULT::from(0u8);
-                // FIXME: sometimes the cursor doesnt allign with the actual position
-                // if (mouse_x - state.cursor_move_pos.lock().unwrap().0).abs() > 1 ||
-                //    (mouse_y - state.cursor_move_pos.lock().unwrap().1).abs() > 1 {
-                //     state.events.lock().unwrap().push(WindowEvent::CursorPosition {
-                //         mouse_x: mouse_x as u32,
-                //         mouse_y: mouse_y as u32
-                //     });
-                // }
             }
 
             WM_LBUTTONDOWN | WM_LBUTTONUP | WM_RBUTTONDOWN | WM_RBUTTONUP | WM_MBUTTONDOWN | WM_MBUTTONUP => {
@@ -292,7 +284,7 @@ impl NativeWindow for Win32Window {
     fn poll(&mut self) -> Vec<WindowEvent> {
         unsafe {
             let mut msg: MSG = std::mem::zeroed();
-            if PeekMessageW(&mut msg, null_mut(), 0, 0, PM_REMOVE) > 0 {
+            while PeekMessageW(&mut msg, null_mut(), 0, 0, PM_REMOVE) > 0 {
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
                 match msg.message {
