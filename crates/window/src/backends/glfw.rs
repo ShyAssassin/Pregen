@@ -55,8 +55,10 @@ impl NativeWindow for GlfwWindow {
     fn poll(&mut self) -> Vec<WindowEvent> {
         self.glfw.poll_events();
         let mut events = Vec::new();
+        // The trait expects that events are returned in the order they were received
+        // but glfw returns them in the reverse order, so we manually reverse them here
         let glfw_events: Vec<_> = glfw::flush_messages(&self.events).collect();
-        for (_, event) in glfw_events {
+        for (_, event) in glfw_events.iter().rev() {
             match event {
                 GlfwWindowEvent::Close => {
                     events.push(WindowEvent::CloseRequested);
@@ -66,12 +68,15 @@ impl NativeWindow for GlfwWindow {
                     // To avoid this we poll the window size until it is no longer changing, still spams but not as much
                     events.append(&mut self.poll());
                     events.push(WindowEvent::Resize {
-                        width: width as u32,
-                        height: height as u32
+                        width: *width as u32,
+                        height: *height as u32
                     });
                 }
                 GlfwWindowEvent::ContentScale(scale_x, scale_y) => {
-                    events.push(WindowEvent::ScaleFactorChanged { scale_x, scale_y });
+                    events.push(WindowEvent::ScaleFactorChanged {
+                        scale_x: *scale_x,
+                        scale_y: *scale_y
+                    });
                 }
                 GlfwWindowEvent::Focus(false) => {
                     events.push(WindowEvent::FocusLost);
@@ -87,23 +92,23 @@ impl NativeWindow for GlfwWindow {
                 }
                 GlfwWindowEvent::CursorPos(x, y) => {
                     events.push(WindowEvent::CursorPosition {
-                        mouse_x: x.max(0.0),
-                        mouse_y: y.max(0.0),
+                        mouse_x: *x,
+                        mouse_y: *y,
                     });
                 }
                 GlfwWindowEvent::MouseButton(button, action, _) => {
-                    events.push(WindowEvent::MouseButton(button.into(), action.into()));
+                    events.push(WindowEvent::MouseButton((*button).into(), (*action).into()));
                 }
                 GlfwWindowEvent::Key(key, code, action, _) => {
                     // FIXME: pressing two at once will result in two events, one for each key
                     // but there will not be two key up events, consider using GlfwWindowEvent::char
                     // and then internally track the state of the keys, this may be fixed now in platform independent code
-                    events.push(WindowEvent::KeyboardInput(key.into(), code as u32, action.into()));
+                    events.push(WindowEvent::KeyboardInput((*key).into(), *code as u32, (*action).into()));
                 }
                 GlfwWindowEvent::Scroll(x, y) => {
                     events.push(WindowEvent::MouseWheel {
-                        scroll_x: x as f32,
-                        scroll_y: y as f32
+                        scroll_x: *x as f32,
+                        scroll_y: *y as f32
                     });
                 }
                 _ => {
