@@ -42,7 +42,7 @@ macro_rules! impl_bind_group_state {
                 return $bindgroup_label;
             }
 
-            fn get_layout_descriptor(&self) -> wgpu::BindGroupLayoutDescriptor {
+            fn get_layout_descriptor(&self) -> wgpu::BindGroupLayoutDescriptor<'_> {
                 // Borrow checker doesnt like when this isnt a static
                 static ENTRIES: &[wgpu::BindGroupLayoutEntry] = &[$(
                     wgpu::BindGroupLayoutEntry {
