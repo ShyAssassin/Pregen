@@ -18,6 +18,7 @@ impl NativeWindow for GlfwWindow {
         }).expect("Failed to initialize GLFW");
 
         glfw.set_swap_interval(glfw::SwapInterval::None);
+        glfw.window_hint(glfw::WindowHint::Focused(false));
         glfw.window_hint(glfw::WindowHint::SRgbCapable(true));
         glfw.window_hint(glfw::WindowHint::ScaleToMonitor(true));
         glfw.window_hint(glfw::WindowHint::ClientApi(glfw::ClientApiHint::NoApi));
@@ -48,6 +49,9 @@ impl NativeWindow for GlfwWindow {
     }
 
     fn lock_cursor(&mut self, lock: bool) {
+        // unsafe {
+        //     glfw::ffi::glfwSetInputMode(self.window.window_ptr(), glfw::ffi::GLFW_CURSOR, glfw::ffi::GLFW_CURSOR_CAPTURED);
+        // }
         self.window.set_cursor_mode(if lock { glfw::CursorMode::Disabled } else { glfw::CursorMode::Normal });
     }
 
