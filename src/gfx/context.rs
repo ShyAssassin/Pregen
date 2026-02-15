@@ -30,19 +30,24 @@ pub struct RenderContext {
 impl RenderContext {
     pub async fn new(window: &mut Window) -> Self {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::PRIMARY,
-            flags: wgpu::InstanceFlags::from_build_config(),
+            backends: wgpu::Backends::PRIMARY.with_env(),
+            flags: wgpu::InstanceFlags::from_env_or_default(),
+            memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
             backend_options: wgpu::BackendOptions {
+                gl: wgpu::GlBackendOptions::default(),
+                noop: wgpu::NoopBackendOptions::default(),
                 dx12: wgpu::Dx12BackendOptions {
                     shader_compiler: wgpu::Dx12Compiler::DynamicDxc {
                         dxc_path: "bin/".into(),
-                        dxil_path: "bin/".into(),
                         max_shader_model: wgpu::DxcShaderModel::V6_5,
-                    }
+                    },
+                    presentation_system: wgpu::wgt::Dx12SwapchainKind::DxgiFromHwnd,
+                    latency_waitable_object: wgpu::wgt::Dx12UseFrameLatencyWaitableObject::DontWait,
                 },
-                ..Default::default()
-            }
+            },
         });
+
+        dbg!(wgpu::InstanceDescriptor::default());
 
         let surface = unsafe {
             let surface = SurfaceTargetUnsafe::from_window(window).unwrap();
@@ -64,10 +69,13 @@ impl RenderContext {
             trace: wgpu::Trace::Off,
             required_features: wgpu::Features::empty(),
             memory_hints: wgpu::MemoryHints::Performance,
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
         }).await.expect("Failed to get device");
 
         // on high DPI displays the framebuffer is larger than the window
-        let buffer_size = window.get_framebuffer_size();
+        let buffer_size = window.framebuffer_size();
+        // let buffer_size = window.framebuffer_size();
+        dbg!(&surface.get_capabilities(&adapter).formats.iter());
         let surface_format = surface.get_capabilities(&adapter).formats.iter()
             .find(|format| format.is_srgb())
             .copied().expect("Surface does not support srgb");
@@ -76,7 +84,7 @@ impl RenderContext {
             width: buffer_size.0 as u32,
             height: buffer_size.1 as u32,
             desired_maximum_frame_latency: 0,
-            present_mode: wgpu::PresentMode::Immediate,
+            present_mode: wgpu::PresentMode::AutoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Opaque,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: vec![surface_format, surface_format.remove_srgb_suffix()],
