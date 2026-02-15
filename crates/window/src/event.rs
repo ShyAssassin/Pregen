@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(PartialEq, Eq)]
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq)]
 pub enum Action {
     Pressed,
     Released,
@@ -17,8 +17,8 @@ impl From<bool> for Action {
     }
 }
 
-#[derive(PartialEq, Eq)]
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq)]
 pub enum Key {
     // Arrow keys
     Left, Right, Up, Down,
@@ -60,8 +60,8 @@ impl Key {
     }
 }
 
-#[derive(PartialEq, Eq)]
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq)]
 pub enum MouseButton {
     Left,
     Right,
