@@ -23,7 +23,6 @@ use wayland_client::protocol::{wl_registry::WlRegistry, wl_display::WlDisplay, w
 pub struct WaylandState {
     pub width: i32,
     pub height: i32,
-    pub events: Vec<WindowEvent>,
 }
 
 pub struct WaylandGlobals {
@@ -37,12 +36,13 @@ pub struct WaylandWindow {
     pub registry: GlobalList,
     pub wlstate: WaylandState,
     pub connection: Connection,
+    pub queue: EventQueue<Self>,
+    pub events: Vec<WindowEvent>,
 
     pub wl_seat: WlSeat,
     pub wl_display: WlDisplay,
     pub xdg_wm_base: XdgWmBase,
     pub wl_compositor: WlCompositor,
-    pub queue: EventQueue<WaylandState>,
 
     pub wl_pointer: WlPointer,
     pub wl_surface: WlSurface,
@@ -51,20 +51,22 @@ pub struct WaylandWindow {
     pub xdg_toplevel: XdgToplevel,
 }
 
-delegate_noop!(WaylandState: WlDisplay);
-delegate_noop!(WaylandState: WlRegistry);
-delegate_noop!(WaylandState: WlCompositor);
+delegate_noop!(WaylandWindow: WlDisplay);
+delegate_noop!(WaylandWindow: WlRegistry);
+delegate_noop!(WaylandWindow: WlCompositor);
 
 // TODO: dont ignore, these are important
-delegate_noop!(WaylandState: ignore WlSeat);
-delegate_noop!(WaylandState: ignore WlSurface);
+delegate_noop!(WaylandWindow: ignore WlSeat);
+delegate_noop!(WaylandWindow: ignore WlSurface);
 
 #[profiling::all_functions]
 impl NativeWindow for WaylandWindow {
     fn init() -> Self {
+        let state = WaylandState::default();
         let conn = Connection::connect_to_env().unwrap();
-        let (registry, mut queue) = registry_queue_init(&conn).unwrap();
+        let (registry, queue) = registry_queue_init(&conn).unwrap();
 
+        let wl_display: WlDisplay = conn.display();
         for global in registry.contents().clone_list() {
             log::debug!(
                 "Found global {} version {}",
@@ -72,29 +74,23 @@ impl NativeWindow for WaylandWindow {
             );
         }
 
-        let mut state = WaylandState::default();
-        let wl_display: WlDisplay = conn.display();
         // Version >4 changed behavour to not allow the reuse of seats after removal
         let wl_seat: WlSeat = registry.bind::<WlSeat, _, _>(&queue.handle(), 1..=4, ()).unwrap();
         let xdg_wm_base: XdgWmBase = registry.bind::<XdgWmBase, _, _>(&queue.handle(), 1..=3, ()).unwrap();
         let wl_compositor: WlCompositor = registry.bind::<WlCompositor, _, _>(&queue.handle(), 1..=6, ()).unwrap();
 
-        queue.roundtrip(&mut state).unwrap();
         let wl_pointer = wl_seat.get_pointer(&queue.handle(), ());
         let wl_keyboard = wl_seat.get_keyboard(&queue.handle(), ());
         let wl_surface = wl_compositor.create_surface(&queue.handle(), ());
         let xdg_surface = xdg_wm_base.get_xdg_surface(&wl_surface, &queue.handle(), ());
         let xdg_toplevel = xdg_surface.get_toplevel(&queue.handle(), ());
 
-        wl_surface.commit();
-        wl_surface.attach(None, 0, 0);
-        queue.roundtrip(&mut state).unwrap();
-
         return Self {
             queue: queue,
             wlstate: state,
             connection: conn,
             registry: registry,
+            events: Vec::default(),
 
             wl_seat: wl_seat,
             wl_display: wl_display,
@@ -103,8 +99,8 @@ impl NativeWindow for WaylandWindow {
 
             wl_pointer: wl_pointer,
             wl_surface: wl_surface,
-            wl_keyboard: wl_keyboard,
             xdg_surface: xdg_surface,
+            wl_keyboard: wl_keyboard,
             xdg_toplevel: xdg_toplevel,
         };
     }
@@ -132,11 +128,14 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn poll(&mut self) -> Vec<WindowEvent> {
-        self.queue.flush().unwrap();
-        self.queue.roundtrip(&mut self.wlstate).unwrap();
-        self.queue.dispatch_pending(&mut self.wlstate).unwrap();
+        self.connection.flush().unwrap();
+        unsafe {
+            let self_ptr = self as *mut Self;
+            (*self_ptr).queue.roundtrip(&mut *self_ptr).unwrap();
+            (*self_ptr).queue.dispatch_pending(&mut *self_ptr).unwrap();
+        }
 
-        return self.wlstate.events.drain(..).collect()
+        return self.events.drain(..).collect()
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -146,7 +145,7 @@ impl NativeWindow for WaylandWindow {
         // the way resizing is handled is by attaching a new buffer of the desired size to
         // the wl_surface. Since we dont handle the wl_surface buffer directly we push
         // a resize event and hope the renderer handles resizing the buffer for us.
-        self.wlstate.events.push(WindowEvent::Resize {
+        self.events.push(WindowEvent::Resize {
             width: width as u32,
             height: height as u32,
         });
@@ -196,7 +195,7 @@ impl NativeWindow for WaylandWindow {
 }
 
 
-impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandState {
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandWindow {
     fn event(
         _: &mut Self, _: &WlRegistry, event: wl_registry::Event,
         _: &GlobalListContents, _: &Connection, _: &QueueHandle<Self>,
@@ -205,7 +204,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandState {
     }
 }
 
-impl Dispatch<XdgToplevel, ()> for WaylandState {
+impl Dispatch<XdgToplevel, ()> for WaylandWindow {
     fn event(
         wlstate: &mut Self, _: &XdgToplevel, event: xdg_toplevel::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
@@ -213,11 +212,13 @@ impl Dispatch<XdgToplevel, ()> for WaylandState {
         if let xdg_toplevel::Event::Close = event {
             wlstate.events.push(WindowEvent::CloseRequested);
         }
+        // TODO: acording to IRC we should only send resize events to the queue
+        // after we recieve an xdg_surface configure event, so cache and send later
         if let xdg_toplevel::Event::Configure { width, height, states: _ } = event {
             if width > 0 && height > 0 {
-                wlstate.width = width;
-                wlstate.height = height;
-                wlstate.events.push(WindowEvent::Resize{
+                wlstate.wlstate.width = width;
+                wlstate.wlstate.height = height;
+                wlstate.events.push(WindowEvent::Resize {
                     width: width as u32,
                     height: height as u32,
                 });
@@ -226,7 +227,7 @@ impl Dispatch<XdgToplevel, ()> for WaylandState {
     }
 }
 
-impl Dispatch<WlKeyboard, ()> for WaylandState {
+impl Dispatch<WlKeyboard, ()> for WaylandWindow {
     fn event(
         _: &mut Self, _: &WlKeyboard, event: wl_keyboard::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
@@ -235,7 +236,7 @@ impl Dispatch<WlKeyboard, ()> for WaylandState {
     }
 }
 
-impl Dispatch<WlPointer, ()> for WaylandState {
+impl Dispatch<WlPointer, ()> for WaylandWindow {
     fn event(
         wlstate: &mut Self, _: &WlPointer, event: wl_pointer::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
@@ -266,7 +267,7 @@ impl Dispatch<WlPointer, ()> for WaylandState {
     }
 }
 
-impl Dispatch<XdgSurface, ()> for WaylandState {
+impl Dispatch<XdgSurface, ()> for WaylandWindow {
     fn event(
         _: &mut Self, xdg_surface: &XdgSurface, event: xdg_surface::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
@@ -277,7 +278,7 @@ impl Dispatch<XdgSurface, ()> for WaylandState {
     }
 }
 
-impl Dispatch<XdgWmBase, ()> for WaylandState {
+impl Dispatch<XdgWmBase, ()> for WaylandWindow {
     fn event(
         _: &mut Self, xdg_wm_base: &XdgWmBase, event: xdg_wm_base::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
