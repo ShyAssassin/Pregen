@@ -1,5 +1,5 @@
-use super::{Key, Action};
 use std::collections::HashSet;
+use super::{Key, Action, Cursor};
 use super::{WindowBackend, WindowEvent};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
@@ -112,6 +112,12 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     /// The implementation handles conversion to physical coordinates.
     /// Coordinates are relative to the top-left corner of the client area.
     fn set_cursor_position(&mut self, x: u32, y: u32);
+
+    // TODO: Implement this!
+    /// Sets the cursor icon to the specified type.
+    fn set_cursor(&mut self, cursor: Cursor) {
+        let _ = cursor;
+    }
 }
 
 // FIXME: I am an idiot and have used window size
