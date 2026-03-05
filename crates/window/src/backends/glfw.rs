@@ -59,10 +59,9 @@ impl NativeWindow for GlfwWindow {
     fn poll(&mut self) -> Vec<WindowEvent> {
         self.glfw.poll_events();
         let mut events = Vec::new();
-        // The trait expects that events are returned in the order they were received
-        // but glfw returns them in the reverse order, so we manually reverse them here
+
         let glfw_events: Vec<_> = glfw::flush_messages(&self.events).collect();
-        for (_, event) in glfw_events.iter().rev() {
+        for (_, event) in glfw_events.iter() {
             match event {
                 GlfwWindowEvent::Close => {
                     events.push(WindowEvent::CloseRequested);
@@ -82,6 +81,10 @@ impl NativeWindow for GlfwWindow {
                         scale_y: *scale_y
                     });
                 }
+                GlfwWindowEvent::CursorPos(_, _) => {
+                    // Cursor position is handled separately to ensure proper ordering and delta calculations
+                    continue;
+                }
                 GlfwWindowEvent::Focus(false) => {
                     events.push(WindowEvent::FocusLost);
                 }
@@ -94,16 +97,11 @@ impl NativeWindow for GlfwWindow {
                 GlfwWindowEvent::Maximize(false) => {
                     events.push(WindowEvent::Minimized);
                 }
-                GlfwWindowEvent::CursorPos(x, y) => {
-                    events.push(WindowEvent::CursorPosition {
-                        mouse_x: *x,
-                        mouse_y: *y,
-                    });
-                }
                 GlfwWindowEvent::MouseButton(button, action, _) => {
                     events.push(WindowEvent::MouseButton((*button).into(), (*action).into()));
                 }
                 GlfwWindowEvent::Key(key, code, action, _) => {
+                    // TODO: review this bug may be fixed now in platform independent code
                     // FIXME: pressing two at once will result in two events, one for each key
                     // but there will not be two key up events, consider using GlfwWindowEvent::char
                     // and then internally track the state of the keys, this may be fixed now in platform independent code
@@ -118,6 +116,19 @@ impl NativeWindow for GlfwWindow {
                 _ => {
                     log::warn!("Unhandled event: {:?}", event);
                 }
+            }
+        }
+
+        // GLFW returns events in reverse order, where the latest event is first
+        // This causes some issues for events that need to be accumulated over time
+        // Unlike other events, cursor movement needs to returned in order to maintain
+        // smooth motion tracking and proper delta calculations for camera/view controls
+        for (_, event) in glfw_events.iter().rev() {
+            if let GlfwWindowEvent::CursorPos(x, y) = event {
+                events.push(WindowEvent::CursorPosition {
+                    mouse_x: *x,
+                    mouse_y: *y,
+                });
             }
         }
 
