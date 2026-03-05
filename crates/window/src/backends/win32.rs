@@ -24,7 +24,6 @@ struct Win32WindowState {
     pub cursor_visible: Mutex<bool>,
     // FIXME: use a channel
     pub events: Mutex<Vec<WindowEvent>>,
-    pub cursor_move_pos: Mutex<(i32, i32)>,
 }
 
 #[derive(Debug)]
@@ -45,7 +44,6 @@ impl Win32Window {
             state: Arc::new(Win32WindowState {
                 events: Mutex::new(Vec::new()),
                 cursor_visible: Mutex::new(true),
-                cursor_move_pos: Mutex::new((0, 0)),
             }),
         }
     }
@@ -141,15 +139,11 @@ impl Win32Window {
             WM_MOUSEMOVE => {
                 let mouse_x = GET_X_LPARAM(l_param);
                 let mouse_y = GET_Y_LPARAM(l_param);
-
-                let last_set_pos = *state.cursor_move_pos.lock().unwrap();
-                if mouse_x != last_set_pos.0 || mouse_y != last_set_pos.1 {
-                    // Should probably move over to the rawinput windows API for this stuff
-                    state.events.lock().unwrap().push(WindowEvent::CursorPosition {
-                        mouse_x: mouse_x as f64,
-                        mouse_y: mouse_y as f64
-                    });
-                }
+                // Should probably move over to the rawinput windows API for this stuff
+                state.events.lock().unwrap().push(WindowEvent::CursorPosition {
+                    mouse_x: mouse_x as f64,
+                    mouse_y: mouse_y as f64
+                });
                 return LRESULT::from(0u8);
             }
 
@@ -429,7 +423,6 @@ impl NativeWindow for Win32Window {
 
     fn set_cursor_position(&mut self, x: u32, y: u32) {
         unsafe {
-            *self.state.cursor_move_pos.lock().unwrap() = (x as i32, y as i32);
             let mut point = POINT { x: x as i32, y: y as i32 };
             ClientToScreen(self.hwnd, &mut point);
             SetCursorPos(point.x, point.y);
