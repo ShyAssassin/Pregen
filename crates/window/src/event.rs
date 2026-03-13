@@ -42,12 +42,23 @@ pub enum Key {
 
 impl Key {
     pub fn from_char(letter: char) -> Self {
-        match letter {
+        match letter.to_uppercase().next().unwrap() {
+            '0' => Key::Num0, '1' => Key::Num1, '2' => Key::Num2, '3' => Key::Num3, '4' => Key::Num4,
+            '5' => Key::Num5, '6' => Key::Num6, '7' => Key::Num7, '8' => Key::Num8, '9' => Key::Num9,
+
             'A' => Key::A, 'B' => Key::B, 'C' => Key::C, 'D' => Key::D, 'E' => Key::E, 'F' => Key::F, 'G' => Key::G,
             'H' => Key::H, 'I' => Key::I, 'J' => Key::J, 'K' => Key::K, 'L' => Key::L, 'M' => Key::M, 'N' => Key::N,
             'O' => Key::O, 'P' => Key::P, 'Q' => Key::Q, 'R' => Key::R, 'S' => Key::S, 'T' => Key::T, 'U' => Key::U,
             'V' => Key::V, 'W' => Key::W, 'X' => Key::X, 'Y' => Key::Y, 'Z' => Key::Z,
-            _ => panic!("Unknown key: {}", letter),
+
+            '-' => Key::Minus, '=' => Key::Equals,
+            '\'' => Key::Apostrophe, '`' => Key::Grave,
+            '\\' => Key::Backslash, ';' => Key::Semicolon,
+            '[' => Key::LeftBracket, ']' => Key::RightBracket,
+            ',' => Key::Comma, '.' => Key::Period, '/' => Key::Slash,
+
+            ' ' => Key::Space, '\t' => Key::Tab, '\n' => Key::Enter,
+            _ => panic!("Unknown key: {} ({})", letter, letter as u32),
         }
     }
 
