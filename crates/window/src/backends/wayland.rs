@@ -95,6 +95,8 @@ impl NativeWindow for WaylandWindow {
 
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
+        wl_surface.commit();
+        conn.flush().unwrap();
         return Self {
             queue: queue,
             wlstate: state,
@@ -117,6 +119,20 @@ impl NativeWindow for WaylandWindow {
             xkb_keymap: None,
             xkb_context: xkb_context,
         };
+
+        // Perform a roundtrip so the compositor's initial configure event
+        // (with the actual window size) is received and processed before
+        // anyone calls get_size(). Without this the window starts at 0x0
+        // until the first poll() and the caller's requested size is used
+        // instead of the compositor's, causing a size mismatch.
+        // unsafe {
+        //     let ptr = &mut window as *mut Self;
+        //     (*ptr).queue.roundtrip(&mut *ptr).unwrap();
+        // }
+        // Discard any events generated during init (e.g. the configure resize)
+        // so they don't get double-processed when the caller first calls poll().
+        // window.events.clear();
+        // return window;
     }
 
     fn show(&mut self) {
