@@ -204,89 +204,95 @@ impl Window {
     pub fn poll(&mut self) -> Vec<WindowEvent> {
         let mut events = Vec::new();
         self.mouse_delta = (0.0, 0.0);
-        let mut unique = HashSet::new();
 
-        // FIXME: completely rewrite this and remove the need to reverse event order
-        // This causes so many fucking issues and is a constant pain in the ass
-        for event in self.window.poll().iter().rev() {
-            let is_kb = matches!(event, WindowEvent::KeyboardInput(_, _, _));
-            let is_mouse = matches!(event, WindowEvent::CursorPosition { .. });
-            if unique.insert(event.id()) || is_kb || is_mouse {
-                match event {
-                    WindowEvent::CloseRequested => {
-                        self.close_requested = true;
-                    }
-                    WindowEvent::FocusGained => {
-                        self.focus = true;
-                    }
-                    WindowEvent::FocusLost => {
-                        self.focus = false;
-                        self.active_keys.clear();
-                        self.capture_cursor(false);
-                        self.mouse_delta = (0.0, 0.0);
-                    }
-                    WindowEvent::KeyboardInput(key, _, action) => {
-                        match action {
-                            Action::Pressed => {
-                                self.active_keys.insert(*key);
-                            }
-                            Action::Released => {
-                                self.active_keys.remove(key);
-                            }
-                        }
-                    }
-                    WindowEvent::Resize { width, height } => {
-                        self.size = (*width, *height);
-                        self.fbsize = (
-                            (*width as f32 * self.scale.0) as u32,
-                            (*height as f32 * self.scale.1) as u32
-                        );
+        // Except for some special cases
+        // Only keep the most recent event
+        let raw_events = self.window.poll();
+        let mut seen_ids: HashSet<u64> = HashSet::new();
+        let deduped: Vec<&WindowEvent> = raw_events.iter().rev().filter(|event| {
+            let exempt = matches!(event, WindowEvent::MouseButton(_, _))
+                      || matches!(event, WindowEvent::CursorPosition{ .. })
+                      || matches!(event, WindowEvent::KeyboardInput(_, _, _));
+            exempt || seen_ids.insert(event.id())
+        }).collect::<Vec<_>>().into_iter().rev().collect();
 
-                        // Backends are only required to emit logical resize events.
-                        // We synthesize the framebuffer resize event here for consumers.
-                        // TODO: Backends really should emit this instead of us faking it here
-                        events.push(WindowEvent::FramebufferResize {
-                            width: self.fbsize.0,
-                            height: self.fbsize.1,
-                        });
-                    }
-                    WindowEvent::ScaleFactorChanged { scale_x, scale_y } => {
-                        self.scale = (*scale_x, *scale_y);
-                        self.fbsize = (
-                            (self.size.0 as f32 * self.scale.0) as u32,
-                            (self.size.1 as f32 * self.scale.1) as u32
-                        );
-
-                        // TODO: also force backends to emit this
-                        // Similarly when the scale factor changes, we recalculate
-                        // the framebuffer size and emit a corresponding resize event.
-                        events.push(WindowEvent::FramebufferResize {
-                            width: self.fbsize.0,
-                            height: self.fbsize.1,
-                        });
-                    }
-                    WindowEvent::CursorPosition { mouse_x, mouse_y } => {
-                        let new_position = (*mouse_x, *mouse_y);
-                        if new_position != self.mouse_position {
-                            let dx = *mouse_x - self.mouse_position.0;
-                            let dy = *mouse_y - self.mouse_position.1;
-
-                            // Ignore delta if it is the exact inverse of the accumulated delta
-                            // This filters out "echoed" events from programmatic cursor movement
-                            if (dx, dy) != (-self.mouse_delta.0 as f64, -self.mouse_delta.1 as f64) {
-                                self.mouse_delta.0 += dx as f64;
-                                self.mouse_delta.1 += dy as f64;
-                            }
-
-                            self.mouse_position = new_position;
-                        }
-                    }
-                    _ => {}
+        for event in deduped {
+            match event {
+                WindowEvent::CloseRequested => {
+                    self.close_requested = true;
                 }
+                WindowEvent::FocusGained => {
+                    self.focus = true;
+                }
+                WindowEvent::FocusLost => {
+                    self.focus = false;
+                    self.active_keys.clear();
+                    self.capture_cursor(false);
+                    self.mouse_delta = (0.0, 0.0);
+                }
+                WindowEvent::KeyboardInput(key, _, action) => {
+                    match action {
+                        Action::Pressed => {
+                            self.active_keys.insert(*key);
+                        }
+                        Action::Released => {
+                            self.active_keys.remove(key);
+                        }
+                    }
+                }
+                WindowEvent::Resize { width, height } => {
+                    self.size = (*width, *height);
+                    self.fbsize = (
+                        (*width as f32 * self.scale.0) as u32,
+                        (*height as f32 * self.scale.1) as u32
+                    );
 
-                events.push(*event);
-                log::trace!("{:?}", event);
+                    // Backends are only required to emit logical resize events.
+                    // We synthesize the framebuffer resize event here for consumers.
+                    // TODO: Backends really should emit this instead of us faking it here
+                    events.push(WindowEvent::FramebufferResize {
+                        width: self.fbsize.0,
+                        height: self.fbsize.1,
+                    });
+                }
+                WindowEvent::ScaleFactorChanged { scale_x, scale_y } => {
+                    self.scale = (*scale_x, *scale_y);
+                    self.fbsize = (
+                        (self.size.0 as f32 * self.scale.0) as u32,
+                        (self.size.1 as f32 * self.scale.1) as u32
+                    );
+
+                    // TODO: also force backends to emit this
+                    // Similarly when the scale factor changes, we recalculate
+                    // the framebuffer size and emit a corresponding resize event.
+                    events.push(WindowEvent::FramebufferResize {
+                        width: self.fbsize.0,
+                        height: self.fbsize.1,
+                    });
+                }
+                WindowEvent::CursorPosition { mouse_x, mouse_y } => {
+                    let new_position = (*mouse_x, *mouse_y);
+                    if new_position != self.mouse_position {
+                        let dx = *mouse_x - self.mouse_position.0;
+                        let dy = *mouse_y - self.mouse_position.1;
+
+                        // Ignore delta if it is the exact inverse of the accumulated delta
+                        // This filters out "echoed" events from programmatic cursor movement
+                        if (dx, dy) != (-self.mouse_delta.0 as f64, -self.mouse_delta.1 as f64) {
+                            self.mouse_delta.0 += dx as f64;
+                            self.mouse_delta.1 += dy as f64;
+                        } else {
+                            log::trace!("Ignoring cursor position event with inverse delta: ({}, {})", dx, dy);
+                        }
+
+                        self.mouse_position = new_position;
+                    }
+                }
+                _ => {}
             }
+
+            events.push(*event);
+            log::trace!("{:?}", event);
         }
 
         return events;

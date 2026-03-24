@@ -81,9 +81,11 @@ impl NativeWindow for GlfwWindow {
                         scale_y: *scale_y
                     });
                 }
-                GlfwWindowEvent::CursorPos(_, _) => {
-                    // Cursor position is handled separately to ensure proper ordering and delta calculations
-                    continue;
+                GlfwWindowEvent::CursorPos(x, y) => {
+                    events.push(WindowEvent::CursorPosition {
+                        mouse_x: *x,
+                        mouse_y: *y,
+                    });
                 }
                 GlfwWindowEvent::Focus(false) => {
                     events.push(WindowEvent::FocusLost);
@@ -116,19 +118,6 @@ impl NativeWindow for GlfwWindow {
                 _ => {
                     log::warn!("Unhandled event: {:?}", event);
                 }
-            }
-        }
-
-        // GLFW returns events in reverse order, where the latest event is first
-        // This causes some issues for events that need to be accumulated over time
-        // Unlike other events, cursor movement needs to returned in order to maintain
-        // smooth motion tracking and proper delta calculations for camera/view controls
-        for (_, event) in glfw_events.iter().rev() {
-            if let GlfwWindowEvent::CursorPos(x, y) = event {
-                events.push(WindowEvent::CursorPosition {
-                    mouse_x: *x,
-                    mouse_y: *y,
-                });
             }
         }
 
