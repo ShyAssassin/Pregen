@@ -8,7 +8,7 @@ profiling = { workspace = true }
 raw-window-handle = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-glfw = { version = "0.59.0", features = ["log"] }
+glfw = { version = "0.62.0", features = ["log", "src-build"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 wayland-client = { version = "0.31.11", features = ["log"] }
