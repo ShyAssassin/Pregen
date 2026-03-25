@@ -47,18 +47,20 @@ impl Model {
         let base_path = std::path::Path::new(path).parent().unwrap();
         let materials = materials.unwrap().iter().map(|m| {
             let mat = m.clone();
-            let normal_path = base_path.join(mat.normal_texture.clone().unwrap());
+            dbg!(&mat);
+            // let normal_path = base_path.join(mat.normal_texture.clone().unwrap());
             let albedo_path = base_path.join(mat.diffuse_texture.clone().unwrap());
-            let ambient_path = base_path.join(mat.ambient_texture.clone().unwrap());
+            // let ambient_path = base_path.join(mat.ambient_texture.clone().unwrap());
 
             let albedo_image = Arc::new(Image::from_path(&albedo_path.to_str().unwrap().into(), 5));
-            let normal_image = Arc::new(Image::from_path(&normal_path.to_str().unwrap().into(), 5));
-            let ambient_image = Arc::new(Image::from_path(&ambient_path.to_str().unwrap().into(), 5));
+            // let normal_image = Arc::new(Image::from_path(&normal_path.to_str().unwrap().into(), 5));
+            // let ambient_image = Arc::new(Image::from_path(&ambient_path.to_str().unwrap().into(), 5));
 
-            let normal = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8Unorm, normal_image));
+            // let normal = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8Unorm, normal_image));
             let albedo = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8UnormSrgb, albedo_image));
-            let ambient = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8UnormSrgb, ambient_image));
-            Arc::new(Material::new(ctx, None, albedo, normal, ambient))
+            // let ambient = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8UnormSrgb, ambient_image));
+            // Arc::new(Material::new(ctx, None, albedo, normal, ambient))
+            Arc::new(Material::new(ctx, Some(&mat.name), albedo.clone(), albedo.clone(), albedo.clone()))
         }).collect::<Vec<Arc<Material>>>();
 
         let mut geo = Vec::new();

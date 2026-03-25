@@ -66,7 +66,7 @@ impl BindGroupState for MaterialBindGroup {
         });
     }
 
-    fn get_layout_descriptor(&self) -> wgpu::BindGroupLayoutDescriptor {
+    fn get_layout_descriptor(&self) -> wgpu::BindGroupLayoutDescriptor<'_> {
         return wgpu::BindGroupLayoutDescriptor {
             label: Some("MaterialBindGroup"),
             entries: &[
