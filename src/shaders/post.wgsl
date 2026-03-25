@@ -23,6 +23,7 @@ var texture_sampler: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    // return textureSample(texture, texture_sampler, in.uv);
     var kernel_x = array<i32, 9>(
         -1, 0, 1,
         -2, 0, 2,
@@ -35,16 +36,16 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         1,  2,  1
     );
 
-    let texSize = vec2<f32>(textureDimensions(texture, 0));
-    let step = vec2<f32>(1.0 / texSize.x, 1.0 / texSize.y);
+    let tex_size = vec2<f32>(textureDimensions(texture, 0));
+    let step = vec2<f32>(1.0 / tex_size.x, 1.0 / tex_size.y);
 
     var sum_x = 0.0;
     var sum_y = 0.0;
 
     for (var y: i32 = -1; y <= 1; y = y + 1) {
         for (var x: i32 = -1; x <= 1; x = x + 1) {
-            let texOffset = in.uv + vec2<f32>(f32(x) * step.x, f32(y) * step.y);
-            let sample_rgb = textureSample(texture, texture_sampler, texOffset);
+            let tex_offset = in.uv + vec2<f32>(f32(x) * step.x, f32(y) * step.y);
+            let sample_rgb = textureSample(texture, texture_sampler, tex_offset);
             let sample = sample_rgb.r + sample_rgb.g + sample_rgb.b;
             let index = (y + 1) * 3 + (x + 1);
             sum_x = sum_x + sample * f32(kernel_x[index]);
@@ -54,8 +55,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let edge = sqrt(sum_x * sum_x + sum_y * sum_y);
 
-    if (edge < 0.15) {
+    if (edge < 3.25) {
         return textureSample(texture, texture_sampler, in.uv);
     }
-    return vec4<f32>(vec3<f32>(edge), 1.0);
+
+    let intensity = smoothstep(0.25, 4.75, edge);
+    let color = vec3<f32>(1.0, 0.0, 1.0) * intensity;
+
+    return vec4<f32>(color, intensity);
 }
