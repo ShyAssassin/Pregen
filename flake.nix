@@ -50,7 +50,7 @@
       # FIXME: wine is not available on darwin???
       windows = pkgs.pkgsCross.mingwW64.mkShell rec {
         nativeBuildInputs = with pkgs; [
-          wineWowPackages.stable
+          wineWow64Packages.stable
           unzip extra-cmake-modules
           pkgsCross.mingwW64.stdenv.cc
           rustToolchain cmake pkg-config
@@ -66,7 +66,7 @@
           export WINEPREFIX="$PWD/.direnv/wine-prefix"
           export CARGO_BUILD_TARGET="x86_64-pc-windows-gnu"
 
-          export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER="${pkgs.wineWowPackages.stable}/bin/wine64";
+          export CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER="${pkgs.wineWow64Packages.stable}/bin/wine";
           export AR_x86_64_pc_windows_gnu="${pkgs.pkgsCross.mingwW64.stdenv.cc}/bin/x86_64-w64-mingw32-ar"
           export CC_x86_64_pc_windows_gnu="${pkgs.pkgsCross.mingwW64.stdenv.cc}/bin/x86_64-w64-mingw32-gcc"
           export CXX_x86_64_pc_windows_gnu="${pkgs.pkgsCross.mingwW64.stdenv.cc}/bin/x86_64-w64-mingw32-g++"
