@@ -11,7 +11,7 @@ use math::Transform;
 use gfx::ShaderStage;
 use futures_lite::future::block_on;
 use rend::{CameraDescriptor, GlobalBindGroup, Model};
-use window::{Key, Action, Window, WindowBackend, WindowEvent};
+use window::{Action, Key, Window, WindowBackend, WindowEvent};
 
 #[global_allocator]
 #[cfg(feature = "profiling")]
@@ -19,13 +19,9 @@ static GLOBAL: tracy_client::ProfiledAllocator<std::alloc::System> = tracy_clien
 
 fn main() {
     logger::init().unwrap();
-    logger::set_crate_log("wgpu", Level::Warn);
-    logger::set_crate_log("naga", Level::Error);
-    logger::set_crate_log("wgpu_hal", Level::Warn);
-    logger::set_crate_log("wgpu_core", Level::Warn);
 
     if std::env::var("RUNNER").is_err() {
-        std::env::set_var("RUNNER", "gfx-ne");
+        unsafe { std::env::set_var("RUNNER", "gfx-ne"); }
         log::warn!("No RUNNER environment variable set, defaulting to gfx-ne");
     }
     log::info!("Running with runner: {}", std::env::var("RUNNER").unwrap());
@@ -47,12 +43,12 @@ fn main() {
 
 struct FlyCamera {
     pub speed: f32,
-    pub sensitivity: f32,
+    pub sensitivity: f64,
     pub camera: rend::Camera,
 }
 
 impl FlyCamera {
-    pub fn new(camera: rend::Camera, speed: f32, sensitivity: f32) -> Self {
+    pub fn new(camera: rend::Camera, speed: f32, sensitivity: f64) -> Self {
         Self {
             speed,
             camera,
@@ -60,7 +56,7 @@ impl FlyCamera {
         }
     }
 
-    pub fn update(&mut self, ctx: &mut gfx::RenderContext, window: &Window) {
+    pub fn update(&mut self, window: &Window) {
         let mut direction = glam::Vec3::ZERO;
         if window.key_pressed(Key::W) {
             direction.z += 1.0;
@@ -82,11 +78,10 @@ impl FlyCamera {
         }
 
         let (dx, dy) = window.mouse_delta();
-        let yaw = glam::Quat::from_rotation_y(dx * self.sensitivity);
-        let pitch = glam::Quat::from_rotation_x(dy * self.sensitivity);
+        let yaw = glam::Quat::from_rotation_y((dx * self.sensitivity) as f32);
+        let pitch = glam::Quat::from_rotation_x((dy * self.sensitivity) as f32);
         self.camera.transform.rotation = yaw * self.camera.transform.rotation * pitch;
         self.camera.transform.translation += self.camera.transform.rotation * direction * self.speed;
-        self.camera.update(&ctx.queue);
     }
 }
 
@@ -136,8 +131,8 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
         cache: None,
         layout: Some!(&context.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&layout],
             push_constant_ranges: &[],
+            bind_group_layouts: &[&layout],
         })),
         vertex: wgpu::VertexState {
             buffers: &[],
@@ -190,7 +185,7 @@ async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::Re
 
 // TODO: not this make abstraction
 async fn wgpu_test() {
-    let mut window = Window::new("Pregen: Runtime", 800, 800, true, WindowBackend::preferred());
+    let mut window = Window::new("Pregen: Runtime", (800, 800), WindowBackend::from_env());
     let mut context = gfx::RenderContext::new(&mut window).await;
     let mut target = context.create_render_target(Some("Test Target"), gfx::SamplerMode::CLAMP, context.config.width, context.config.height);
     dbg!(&target);
@@ -205,13 +200,14 @@ async fn wgpu_test() {
     let shader = context.create_shader("shaders/default.wgsl");
     dbg!(&shader);
     let mut camera = rend::Camera::new(&mut context, rend::CameraProjection::Perspective, CameraDescriptor {
-        aspect_ratio: window.get_aspect_ratio(),
+        aspect_ratio: window.aspect_ratio(),
         z_near: 0.001,
         ..Default::default()
     });
     camera.transform.translation.z = 3.0;
     camera.look_at((0.0, 0.0, 0.0).into());
-    let mut camera = FlyCamera::new(camera, 0.001, 0.001);
+    let mut camera = FlyCamera::new(camera, 0.02, 0.0015);
+    let remi = Model::from_path(&mut context, Some("Backpack"), "remi/remi.obj", Transform::default());
     let model = Model::from_path(&mut context, Some("Backpack"), "backpack/backpack.obj", Transform::default());
     let mut frame_bind = context.create_bind_group::<GlobalBindGroup>(None);
     let lights = (0..8).map(|_| {
@@ -222,8 +218,8 @@ async fn wgpu_test() {
                 rand::random::<f32>() * 10.0 - 5.0,
                 rand::random::<f32>() * 10.0 - 5.0
             ),
-            intensity: rand::random::<f32>().abs(),
-            color: glam::Vec3::new(rand::random::<f32>().abs(), rand::random::<f32>().abs(), rand::random::<f32>().abs()),
+            intensity: rand::random::<f32>() * 1.25,
+            color: glam::Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()),
         }
     }).collect::<Vec<_>>();
     frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 8 lights"));
@@ -291,19 +287,23 @@ async fn wgpu_test() {
     dbg!(&model.transform);
     let mut capture_mouse = false;
     dbg!(&camera.camera.transform);
-    camera.update(&mut context, &window);
+    // camera.update(&mut context, &window);
     let (mut post_pipeline, mut post_bind_group) = create_post_pipeline(&mut context, &target).await;
     while !window.should_close() {
         profiling::finish_frame!();
 
         for event in window.poll() {
             match event {
+                WindowEvent::FocusLost => {
+                    capture_mouse = false;
+                    window.capture_cursor(false);
+                }
                 WindowEvent::FramebufferResize { width, height } => {
                     if (width, height) != (0, 0) {
                         context.config.width = width;
                         context.config.height = height;
                         log::info!("Resizing to {}x{}", width, height);
-                        camera.camera.aspect_ratio = window.get_aspect_ratio();
+                        camera.camera.aspect_ratio = window.aspect_ratio();
                         context.surface.configure(&context.device, &context.config);
                         target.resize(&context.device, context.config.width, context.config.height);
                         depth_texture.resize(&context.device, context.config.width, context.config.height);
@@ -311,7 +311,7 @@ async fn wgpu_test() {
                     }
                 }
                 WindowEvent::KeyboardInput(Key::Escape, _, Action::Pressed) => {
-                    window.set_should_close(true);
+                    return;
                 }
                 WindowEvent::KeyboardInput(Key::P, _, Action::Pressed) => {
                     shader.reload(&context.device);
@@ -326,7 +326,22 @@ async fn wgpu_test() {
                 }
                 WindowEvent::KeyboardInput(Key::Tab, _, Action::Pressed) => {
                     capture_mouse = !capture_mouse;
-                    window.lock_cursor(capture_mouse);
+                    window.capture_cursor(capture_mouse);
+                }
+                WindowEvent::KeyboardInput(Key::L, _, Action::Pressed) => {
+                    let lights = (0..8).map(|_| {
+                        rend::LightingUniform {
+                            _padding: 0.0,
+                            position: glam::Vec3::new(
+                                rand::random::<f32>() * 10.0 - 5.0,
+                                rand::random::<f32>() * 10.0 - 5.0,
+                                rand::random::<f32>() * 10.0 - 5.0
+                            ),
+                            intensity: rand::random::<f32>() * 1.25,
+                            color: glam::Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()),
+                        }
+                    }).collect::<Vec<_>>();
+                    frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 8 lights"));
                 }
                 WindowEvent::KeyboardInput(Key::Minus, _, Action::Pressed) => {
                     camera.camera.fov -= 1.0;
@@ -351,19 +366,20 @@ async fn wgpu_test() {
 
         frame_bind.u_time.set(frame);
         frame_bind.update(&context.queue);
+        camera.camera.update(&context.queue);
         // camera.camera.transform.translation.x = frame.cos() * 3.0;
         // camera.camera.transform.translation.z = frame.sin() * 3.0;
         // camera.camera.look_at((0.0, 0.0, 0.0).into());
         if capture_mouse {
-            camera.update(&mut context, &window);
-            window.set_cursor_position(context.config.width / 2, context.config.height / 2);
+            camera.update(&window);
+            window.move_cursor(context.config.width / 2, context.config.height / 2);
         }
         let swapchain = match context.surface.get_current_texture() {
             Ok(swapchain) => swapchain,
             // In theory this should never happen unless the surface is changed but not reconfigured
             // But for some reason under xwayland the third frame invalidates the surface????
             Err(_) => {
-                log::info!("Reconfiguring surface");
+                // log::info!("Reconfiguring surface");
                 context.surface.configure(&context.device, &context.config);
                 continue;
             }
@@ -383,7 +399,8 @@ async fn wgpu_test() {
                     ops: wgpu::Operations {
                         store: wgpu::StoreOp::Store,
                         load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    }
+                    },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &depth_texture.view,
@@ -405,6 +422,12 @@ async fn wgpu_test() {
                 rpass.set_index_buffer(mesh.geometry.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
                 rpass.draw_indexed(mesh.geometry.range(), 0, 0..1);
             }
+            for mesh in &remi.meshes {
+                rpass.set_bind_group(3, mesh.material.group.as_raw(), &[]);
+                rpass.set_vertex_buffer(0, mesh.geometry.vertex_buffer.slice(..));
+                rpass.set_index_buffer(mesh.geometry.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                rpass.draw_indexed(mesh.geometry.range(), 0, 0..1);
+            }
         }
         {
             // Post procceesing
@@ -416,7 +439,8 @@ async fn wgpu_test() {
                     ops: wgpu::Operations {
                         store: wgpu::StoreOp::Store,
                         load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    }
+                    },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 ..Default::default()
@@ -431,3 +455,122 @@ async fn wgpu_test() {
     };
 }
 
+async fn gfx_ne_test() {
+    use gfx_ne::*;
+    // gfx_ne::shader::Shader::parse_spirv(include_bytes!("../shader.spv"));
+    let mut window = Window::new("Pregen: Gfx-Ne", (800, 800), window::WindowBackend::from_env());
+    let device = gfx_ne::Device::new().await;
+    let mut surface = unsafe { Surface::new(device.clone(), &window, (800, 800)) };
+
+    let shader = device.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("Test Shader"),
+        source: wgpu::ShaderSource::Wgsl(include_str!("shaders/tri.wgsl").into())
+    });
+
+    let pipeline = device.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Render pipeline"),
+        cache: None,
+        layout: Some(&device.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        })),
+        vertex: wgpu::VertexState {
+            buffers: &[],
+            module: &shader,
+            entry_point: None,
+            compilation_options: wgpu::PipelineCompilationOptions {
+                ..Default::default()
+            },
+        },
+        multisample: wgpu::MultisampleState {
+            mask: !0,
+            count: 1,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview: None,
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: None,
+            compilation_options: wgpu::PipelineCompilationOptions {
+                ..Default::default()
+            },
+            targets: &[Some(wgpu::ColorTargetState {
+                format: surface.config.format,
+                blend: Some(wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        operation: wgpu::BlendOperation::Add,
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    },
+                    alpha: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                }),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        depth_stencil: None,
+        primitive: wgpu::PrimitiveState {
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            ..Default::default()
+        },
+    });
+
+    while !window.should_close() {
+        for event in window.poll() {
+            match event {
+                window::WindowEvent::FramebufferResize { width, height } => {
+                    if (width, height) != (0, 0) {
+                        surface.resize(width, height);
+                        log::info!("Resizing to {}x{}", width, height);
+                    }
+                }
+                window::WindowEvent::KeyboardInput(window::Key::Escape, _, window::Action::Pressed) => {
+                    return
+                }
+                _ => {}
+            }
+        }
+
+        let swapchain = match surface.surface.get_current_texture() {
+            Ok(swapchain) => swapchain,
+            // In theory this should never happen unless the surface is changed but not reconfigured
+            // But for some reason under xwayland the third frame invalidates the surface????
+            Err(_) => {
+                surface.reconfigure();
+                // log::info!("Reconfiguring surface");
+                continue;
+            }
+        };
+
+        let swap_view = swapchain.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = device.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: None
+        });
+        {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &swap_view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        store: wgpu::StoreOp::Store,
+                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    },
+                    depth_slice: None,
+                })],
+                depth_stencil_attachment: None,
+                ..Default::default()
+            });
+            rpass.set_pipeline(&pipeline);
+            rpass.draw(0..3, 0..1);
+        }
+        device.queue.submit([encoder.finish()]);
+        swapchain.present();
+    }
+}
