@@ -34,11 +34,11 @@
           vulkan-tools vulkan-extension-layer
           vulkan-tools-lunarg vulkan-validation-layers
 
+          # X11
+          libX11 libXcursor libXrandr libXi libXinerama libxcb
+
           # Wayland
           wayland wayland-protocols wayland-scanner libxkbcommon
-
-          # X11
-          xorg.libX11 xorg.libXcursor xorg.libXrandr xorg.libXi xorg.libXinerama xorg.libxcb
         ];
 
         shellHook = ''
