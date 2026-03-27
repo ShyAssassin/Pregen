@@ -169,6 +169,7 @@ impl Window {
             _ => panic!("Unsupported window backend selected: {:?}", backend),
         };
 
+        window.focus();
         window.resize(size.0, size.1);
         return Self::from_native(title, backend, window);
     }
