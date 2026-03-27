@@ -28,13 +28,14 @@ impl Surface {
             .find(|format| format.is_srgb())
         .copied().unwrap_or(prefered);
 
+        // TODO: expose vsync options to caller?
         let config = wgpu::SurfaceConfiguration {
             format: format,
             width: framebuffer.0,
             height: framebuffer.1,
             desired_maximum_frame_latency: 1,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            present_mode: wgpu::PresentMode::AutoNoVsync,
+            present_mode: wgpu::PresentMode::AutoVsync,
+            alpha_mode: wgpu::CompositeAlphaMode::Opaque,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             view_formats: vec![format.add_srgb_suffix(), format.remove_srgb_suffix()],
         };
