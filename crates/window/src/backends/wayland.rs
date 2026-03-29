@@ -95,8 +95,6 @@ impl NativeWindow for WaylandWindow {
 
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
-        wl_surface.commit();
-        conn.flush().unwrap();
         return Self {
             queue: queue,
             wlstate: state,
