@@ -401,6 +401,10 @@ impl Window {
         return self.backend;
     }
 
+    pub fn native(&self) -> &dyn NativeWindow {
+        return self.window.as_ref();
+    }
+
     pub fn aspect_ratio(&self) -> f32 {
         return self.size.0 as f32 / self.size.1 as f32;
     }
