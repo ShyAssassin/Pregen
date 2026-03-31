@@ -26,6 +26,7 @@ use wayland_client::protocol::{wl_registry::WlRegistry, wl_display::WlDisplay, w
 pub struct WaylandState {
     pub width: i32,
     pub height: i32,
+    pub focused: bool,
 }
 
 pub struct WaylandGlobals {
@@ -147,8 +148,7 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn is_focused(&self) -> bool {
-        // todo!()
-        return true;
+        return self.wlstate.focused;
     }
 
     fn lock_cursor(&mut self, lock: bool) {
@@ -307,9 +307,11 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
                 }
             }
             wl_keyboard::Event::Enter { serial: _, surface: _, keys: _ } => {
+                wlstate.wlstate.focused = true;
                 wlstate.events.push(WindowEvent::FocusGained);
             }
             wl_keyboard::Event::Leave { serial: _, surface: _ } => {
+                wlstate.wlstate.focused = false;
                 wlstate.events.push(WindowEvent::FocusLost);
             }
             wl_keyboard::Event::RepeatInfo { rate, delay } => {
