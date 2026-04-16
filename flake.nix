@@ -19,10 +19,9 @@
         targets = ["x86_64-unknown-linux-gnu" "x86_64-pc-windows-gnu"];
       };
     in {
-      # TODO: fix darwin build
       default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
-          wgpu-utils tracy lldb valgrind
+          wgpu-utils tracy lldb
 
           # Build dependencies
           rustToolchain clang mold
@@ -31,19 +30,20 @@
 
           # Vulkan
           vulkan-headers vulkan-loader
-          vulkan-tools vulkan-extension-layer
-          vulkan-tools-lunarg vulkan-validation-layers
-
-          # X11
+          vulkan-validation-layers vulkan-tools
+        ] ++ lib.optionals (pkgs.stdenv.isLinux) [
+          vulkan-tools-lunarg vulkan-extension-layer # cunts
           libX11 libXcursor libXrandr libXi libXinerama libxcb
-
-          # Wayland
           wayland wayland-protocols wayland-scanner libxkbcommon
         ];
 
         shellHook = ''
+          export VK_LAYER_PATH="${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d"
+        '' + pkgs.lib.optionalString (pkgs.stdenv.isLinux) ''
           export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
           export RUSTFLAGS="$RUSTFLAGS -C linker=${pkgs.clang}/bin/clang -C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
+        '' + pkgs.lib.optionalString (pkgs.stdenv.isDarwin) ''
+          export DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath buildInputs)}";
         '';
       };
 
@@ -73,7 +73,6 @@
           export RC_x86_64_pc_windows_gnu="${pkgs.pkgsCross.mingwW64.stdenv.cc}/bin/x86_64-w64-mingw32-windres"
           export RUSTFLAGS="${pkgs.lib.concatStringsSep " " (pkgs.lib.map (p: "-L native=${p}/lib") buildInputs)}"
           export LD_LIBRARY_PATH="${builtins.toString (pkgs.lib.makeLibraryPath (buildInputs ++ nativeBuildInputs))}"
-          export DYLD_LIBRARY_PATH="${builtins.toString (pkgs.lib.makeLibraryPath (buildInputs ++ nativeBuildInputs))}"
 
           export CMAKE_AR="${pkgs.pkgsCross.mingwW64.stdenv.cc}/bin/${pkgs.pkgsCross.mingwW64.stdenv.cc.targetPrefix}ar"
           export CMAKE_C_COMPILER="${pkgs.pkgsCross.mingwW64.stdenv.cc}/bin/${pkgs.pkgsCross.mingwW64.stdenv.cc.targetPrefix}cc"
