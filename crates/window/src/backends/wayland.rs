@@ -119,18 +119,18 @@ impl NativeWindow for WaylandWindow {
             xkb_context: xkb_context,
         };
 
-        // Perform a roundtrip so the compositor's initial configure event
-        // (with the actual window size) is received and processed before
-        // anyone calls get_size(). Without this the window starts at 0x0
-        // until the first poll() and the caller's requested size is used
-        // instead of the compositor's, causing a size mismatch.
+        // // Perform a roundtrip so the compositor's initial configure event
+        // // (with the actual window size) is received and processed before
+        // // anyone calls get_size(). Without this the window starts at 0x0
+        // // until the first poll() and the caller's requested size is used
+        // // instead of the compositor's, causing a size mismatch.
         // unsafe {
         //     let ptr = &mut window as *mut Self;
         //     (*ptr).queue.roundtrip(&mut *ptr).unwrap();
         // }
-        // Discard any events generated during init (e.g. the configure resize)
-        // so they don't get double-processed when the caller first calls poll().
-        // window.events.clear();
+        // // Discard any events generated during init (e.g. the configure resize)
+        // // so they don't get double-processed when the caller first calls poll().
+        // // window.events.clear();
         // return window;
     }
 
@@ -143,7 +143,6 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn shutdown(&mut self) {
-        // todo!()
         self.connection.flush().unwrap();
     }
 
@@ -156,6 +155,10 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn poll(&mut self) -> Vec<WindowEvent> {
+        // TODO: Implement keyboard input repeat events
+        // could probably be done by caching the last key pressed
+        // and then using the xkb repeat info to generate synthetic key events
+
         self.connection.flush().unwrap();
         unsafe {
             let self_ptr = self as *mut Self;
@@ -263,23 +266,24 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
         match event {
             wl_keyboard::Event::Keymap { format, fd, size } => {
                 log::debug!("Keyboard keymap event: format={:?}, size={}", format, size);
-                if format != wayland_client::WEnum::Value(wl_keyboard::KeymapFormat::XkbV1) {
+                if format == wayland_client::WEnum::Value(wl_keyboard::KeymapFormat::XkbV1) {
+                    match unsafe { xkb::Keymap::new_from_fd(&wlstate.xkb_context, fd,
+                            size as usize, xkb::KEYMAP_FORMAT_TEXT_V1, xkb::KEYMAP_COMPILE_NO_FLAGS) } {
+                        Ok(Some(keymap)) => {
+                            log::info!("Loaded keymap with {} layouts", keymap.num_layouts());
+                            let state = xkb::State::new(&keymap);
+                            wlstate.xkb_keymap = Some(keymap);
+                            wlstate.xkb_state = Some(state);
+                        }
+                        Ok(None) => {
+                            log::error!("Failed to compile xkb keymap from compositor");
+                        }
+                        Err(e) => {
+                            log::error!("Failed to create xkb keymap from fd: {}", e);
+                        }
+                    }
+                } else {
                     log::warn!("Unsupported keymap format: {:?}", format);
-                }
-                match unsafe { xkb::Keymap::new_from_fd(&wlstate.xkb_context, fd,
-                        size as usize, xkb::KEYMAP_FORMAT_TEXT_V1, xkb::KEYMAP_COMPILE_NO_FLAGS) } {
-                    Ok(Some(keymap)) => {
-                        log::info!("Loaded keymap with {} layouts", keymap.num_layouts());
-                        let state = xkb::State::new(&keymap);
-                        wlstate.xkb_keymap = Some(keymap);
-                        wlstate.xkb_state = Some(state);
-                    }
-                    Ok(None) => {
-                        log::error!("Failed to compile xkb keymap from compositor");
-                    }
-                    Err(e) => {
-                        log::error!("Failed to create xkb keymap from fd: {}", e);
-                    }
                 }
             }
             wl_keyboard::Event::Key { serial: _, time: _, key, state } => {
@@ -287,6 +291,7 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
                 let xkb_keycode = xkb::Keycode::new(key + 8);
                 let action = match state.into_result().unwrap() {
                     wl_keyboard::KeyState::Pressed => Action::Pressed,
+                    wl_keyboard::KeyState::Repeated => Action::Pressed,
                     wl_keyboard::KeyState::Released => Action::Released,
                     _ => unreachable!("Unknown wayland key state, somehow"),
                 };
