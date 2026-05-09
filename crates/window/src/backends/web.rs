@@ -8,12 +8,12 @@ use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{WebCanvasWindowHandle, RawWindowHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
-#[derive(Debug)]
 pub struct WebWindow {
     pub window: web_sys::Window,
     pub document: web_sys::Document,
     pub canvas: web_sys::HtmlCanvasElement,
     pub events: Arc<Mutex<Vec<WindowEvent>>>,
+    closures: Vec<Closure<dyn FnMut(JsValue)>>,
 }
 
 #[profiling::all_functions]
@@ -22,58 +22,65 @@ impl NativeWindow for WebWindow {
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();
         let events = Arc::new(Mutex::new(Vec::new()));
-        // FIXME: hard coding this is bad, should be user defined and passed in, add a window hint?
         let canvas = document.get_element_by_id("view").unwrap();
+        let mut closures: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
         let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
 
-        // FIXME: calling .forget() on the closures will memory leak, need to store them somewhere
-        let key_up = Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {
+        let key_up = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::KeyboardEvent = event.dyn_into().unwrap();
             log::info!("Key up event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onkeyup(Some(key_up.as_ref().unchecked_ref()));
-        key_up.forget();
+        closures.push(key_up);
 
-        let key_down = Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {
+        let key_down = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::KeyboardEvent = event.dyn_into().unwrap();
             log::info!("Key down event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onkeydown(Some(key_down.as_ref().unchecked_ref()));
-        key_down.forget();
+        closures.push(key_down);
 
-        let mouse_down = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
+        let mouse_down = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::MouseEvent = event.dyn_into().unwrap();
             log::info!("Mouse down event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onmousedown(Some(mouse_down.as_ref().unchecked_ref()));
-        mouse_down.forget();
+        closures.push(mouse_down);
 
-        let mouse_up = Closure::wrap(Box::new(move |event: web_sys::MouseEvent| {
+        let mouse_up = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::MouseEvent = event.dyn_into().unwrap();
             log::info!("Mouse up event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onmouseup(Some(mouse_up.as_ref().unchecked_ref()));
-        mouse_up.forget();
+        closures.push(mouse_up);
 
-        let blur = Closure::wrap(Box::new(move |event: web_sys::FocusEvent| {
+        let blur = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::FocusEvent = event.dyn_into().unwrap();
             log::info!("Blur event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onblur(Some(blur.as_ref().unchecked_ref()));
-        blur.forget();
+        closures.push(blur);
 
-        let focus = Closure::wrap(Box::new(move |event: web_sys::FocusEvent| {
+        let focus = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::FocusEvent = event.dyn_into().unwrap();
             log::info!("Focus event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onfocus(Some(focus.as_ref().unchecked_ref()));
-        focus.forget();
+        closures.push(focus);
 
-        let resize = Closure::wrap(Box::new(move |event: web_sys::UiEvent| {
+        let resize = Closure::wrap(Box::new(move |event: JsValue| {
+            let event: web_sys::UiEvent = event.dyn_into().unwrap();
             log::info!("Resize event: {:?}", event);
-        }) as Box<dyn FnMut(_)>);
+        }) as Box<dyn FnMut(JsValue)>);
         canvas.set_onresize(Some(resize.as_ref().unchecked_ref()));
-        resize.forget();
+        closures.push(resize);
 
         return Self {
             window: window,
             canvas: canvas,
             events: events,
             document: document,
+            closures: closures,
         };
     }
 
@@ -92,7 +99,9 @@ impl NativeWindow for WebWindow {
     }
 
     fn shutdown(&mut self) {
-        // We *probably* don't need to do anything here...
+        for closure in self.closures.drain(..) {
+            closure.forget();
+        }
     }
 
     fn is_focused(&self) -> bool {
