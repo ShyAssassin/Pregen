@@ -1,7 +1,9 @@
 use crate::window::NativeWindow;
-use crate::{Key, Action, MouseButton, WindowEvent};
+use raw_window_handle::HandleError;
+use raw_window_handle::{WindowHandle, HasWindowHandle};
+use raw_window_handle::{DisplayHandle, HasDisplayHandle};
+use crate::{Key, Action, MouseButton, WindowEvent, Cursor};
 use glfw::{Glfw, GlfwReceiver, PWindow, WindowEvent as GlfwWindowEvent};
-use raw_window_handle::{DisplayHandle, HasDisplayHandle, HasWindowHandle, WindowHandle, HandleError};
 
 #[derive(Debug)]
 pub struct GlfwWindow {
@@ -17,7 +19,6 @@ impl NativeWindow for GlfwWindow {
             log::error!("{:?}: {}", err, desc);
         }).expect("Failed to initialize GLFW");
 
-        glfw.set_swap_interval(glfw::SwapInterval::None);
         glfw.window_hint(glfw::WindowHint::Focused(false));
         glfw.window_hint(glfw::WindowHint::SRgbCapable(true));
         glfw.window_hint(glfw::WindowHint::ScaleToMonitor(true));
@@ -167,6 +168,16 @@ impl NativeWindow for GlfwWindow {
     fn get_cursor_position(&self) -> (u32, u32) {
         let (x, y) = self.window.get_cursor_pos();
         return (x.max(0.0) as u32, y.max(0.0) as u32);
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        let cursor = glfw::Cursor::standard(match cursor {
+            Cursor::Text => glfw::StandardCursor::IBeam,
+            Cursor::Pointer => glfw::StandardCursor::Hand,
+            Cursor::Default => glfw::StandardCursor::Arrow,
+            Cursor::Crosshair => glfw::StandardCursor::Crosshair,
+        });
+        self.window.set_cursor(Some(cursor));
     }
 }
 
