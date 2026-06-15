@@ -5,7 +5,7 @@ use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
 pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
-    /// Creates and initializes a new hidden window.
+    /// Creates and initializes a new unfocused and hidden window.
     ///
     /// Performs any necessary one-time setup for the windowing system and creates
     /// a new native window. The window should remain invisible until `show()` is called.
@@ -182,12 +182,11 @@ impl Window {
         let fbwidth = (size.0 as f32 * dpi.0) as u32;
         let fbheight = (size.1 as f32 * dpi.1) as u32;
 
-        log::debug!("Window content scale: {:?}", dpi);
         log::debug!("Window size: {}x{}", size.0, size.1);
+        log::debug!("Monitor DPI scale: {}:{}", dpi.0, dpi.1);
         log::debug!("Framebuffer size: {}x{}", fbwidth, fbheight);
 
         return Self {
-            title: title.to_string(),
             size: size,
             scale: dpi,
             focus: focus,
@@ -196,9 +195,10 @@ impl Window {
             capture_cursor: false,
             close_requested: false,
             mouse_delta: (0.0, 0.0),
+            title: title.to_string(),
             mouse_position: (0.0, 0.0),
             fbsize: (fbwidth, fbheight),
-            active_keys: HashSet::new(),
+            active_keys: Default::default(),
         };
     }
 
@@ -374,6 +374,10 @@ impl Window {
         self.active_keys.clear();
         self.close_requested = true;
     }
+
+    pub fn aspect_ratio(&self) -> f32 {
+        return self.size.0 as f32 / self.size.1 as f32;
+    }
 }
 
 impl Window {
@@ -401,21 +405,21 @@ impl Window {
         return self.backend;
     }
 
-    pub fn native(&self) -> &dyn NativeWindow {
-        return self.window.as_ref();
-    }
-
-    pub fn aspect_ratio(&self) -> f32 {
-        return self.size.0 as f32 / self.size.1 as f32;
-    }
-
     pub fn mouse_delta(&self) -> (f64, f64) {
         return self.mouse_delta;
+    }
+
+    pub fn native(&self) -> &dyn NativeWindow {
+        return self.window.as_ref();
     }
 
     // TODO: maybe rename this function?
     pub fn key_pressed(&self, key: Key) -> bool {
         return self.active_keys.contains(&key);
+    }
+
+    pub fn native_mut(&mut self) -> &mut dyn NativeWindow {
+        return self.window.as_mut();
     }
 }
 
