@@ -8,6 +8,13 @@ mod shader;
 mod sampler;
 mod texture;
 
+pub use buffers::*;
+
+#[derive(Debug, Clone, Copy)]
+#[derive(Hash, PartialEq, Eq)]
+/// A stub marker for dynamic types
+pub struct Dynamic;
+
 pub use device::Device;
 pub use shader::Shader;
 pub use sampler::Sampler;
