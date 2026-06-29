@@ -90,11 +90,10 @@ impl NativeWindow for WebWindow {
     }
 
     fn focus(&mut self) {
-        match self.window.focus() {
-            Ok(_) => {}
-            Err(err) => {
-                log::error!("Failed to focus window: {:?}", err);
-            }
+        if let Err(err) = self.window.focus() {
+            log::error!("Failed to focus window: {:?}", err);
+        } if let Err(err) = self.canvas.focus() {
+            log::error!("Failed to focus canvas: {:?}", err);
         }
     }
 
@@ -119,7 +118,7 @@ impl NativeWindow for WebWindow {
     }
 
     fn poll(&mut self) -> Vec<WindowEvent> {
-        // FIXME: to not block the main thread we need to use either a web worker or put everything in `requestAnimationFrame` closure
+        // FIXME: to not block the main thread we need to use either a web worker or put everything in a `requestAnimationFrame` closure
         // Potentially we could make the thread async sleep for a bit to not block the main thread
         // We could also use `setInterval` / `setTimeout` but that would probably be a bad idea
         return Vec::new();
