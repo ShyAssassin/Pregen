@@ -3,16 +3,26 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
+macro_rules! Import {
+    ($($protocol:ident)::+, $version:ident, $module:ident => $mod_alias:ident, $type:ident => $type_alias:ident) => {
+        use wayland_protocols::$($protocol)::+::$version::client::$module as $mod_alias;
+        use wayland_protocols::$($protocol)::+::$version::client::$module::$type as $type_alias;
+    };
+}
+
+Import!(wp::cursor_shape, v1, wp_cursor_shape_device_v1 => wp_cursor_shape_device, WpCursorShapeDeviceV1 => WpCursorShapeDevice);
+Import!(wp::cursor_shape, v1, wp_cursor_shape_manager_v1 => wp_cursor_shape_manager, WpCursorShapeManagerV1 => WpCursorShapeManager);
+
 use std::ptr::NonNull;
 use crate::window::NativeWindow;
-use crate::{WindowEvent, Action, Key, MouseButton};
+use crate::{MouseButton, Cursor};
+use xkbcommon::xkb::{self, keysyms};
+use crate::{WindowEvent, Action, Key};
 use raw_window_handle::{HasWindowHandle, HasDisplayHandle};
 use raw_window_handle::{WaylandWindowHandle, RawWindowHandle};
 use raw_window_handle::{WaylandDisplayHandle, RawDisplayHandle};
 use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
-use xkbcommon::xkb;
-use xkbcommon::xkb::keysyms;
 use wayland_client::protocol::*;
 use wayland_protocols::xdg::shell::client::*;
 use wayland_client::globals::{GlobalList, GlobalListContents, registry_queue_init};
@@ -27,33 +37,50 @@ pub struct WaylandState {
     pub width: i32,
     pub height: i32,
     pub focused: bool,
+    pub pointer_entry: u32,
+    pub cursor_shape: Cursor,
 }
 
 pub struct WaylandGlobals {
     pub wl_seat: WlSeat,
-    pub wl_display: WlDisplay,
     pub xdg_wm_base: XdgWmBase,
     pub wl_compositor: WlCompositor,
+    pub wp_cursor_shape_manager: WpCursorShapeManager,
+}
+
+impl WaylandGlobals {
+    pub fn new(registry: &GlobalList, queue: &EventQueue<WaylandWindow>) -> Self {
+        let queue: &QueueHandle<WaylandWindow> = &queue.handle();
+        // Version >4 disallows the reuse of seats after removal :)
+        let wl_seat: WlSeat = registry.bind(queue, 1..=4, ()).unwrap();
+        let xdg_wm_base: XdgWmBase = registry.bind(queue, 1..=3, ()).unwrap();
+        let wl_compositor: WlCompositor = registry.bind(queue, 1..=6, ()).unwrap();
+        let wp_cursor_shape_manager: WpCursorShapeManager = registry.bind(queue, 1..=1, ()).unwrap();
+
+        return Self {
+            wl_seat: wl_seat,
+            xdg_wm_base: xdg_wm_base,
+            wl_compositor: wl_compositor,
+            wp_cursor_shape_manager: wp_cursor_shape_manager,
+        };
+    }
 }
 
 pub struct WaylandWindow {
+    pub wdisplay: WlDisplay,
     pub registry: GlobalList,
     pub wlstate: WaylandState,
     pub connection: Connection,
     pub queue: EventQueue<Self>,
     pub events: Vec<WindowEvent>,
-    // pub wlglobals: WaylandGlobals,
-
-    pub wl_seat: WlSeat,
-    pub wl_display: WlDisplay,
-    pub xdg_wm_base: XdgWmBase,
-    pub wl_compositor: WlCompositor,
+    pub wlglobals: WaylandGlobals,
 
     pub wl_pointer: WlPointer,
     pub wl_surface: WlSurface,
     pub xdg_surface: XdgSurface,
     pub wl_keyboard: WlKeyboard,
     pub xdg_toplevel: XdgToplevel,
+    pub wp_cursor_shape_device: WpCursorShapeDevice,
 
     pub xkb_context: xkb::Context,
     pub xkb_state: Option<xkb::State>,
@@ -63,6 +90,8 @@ pub struct WaylandWindow {
 delegate_noop!(WaylandWindow: WlDisplay);
 delegate_noop!(WaylandWindow: WlRegistry);
 delegate_noop!(WaylandWindow: WlCompositor);
+delegate_noop!(WaylandWindow: WpCursorShapeDevice);
+delegate_noop!(WaylandWindow: WpCursorShapeManager);
 
 // TODO: dont ignore, these are important
 delegate_noop!(WaylandWindow: ignore WlSeat);
@@ -83,36 +112,32 @@ impl NativeWindow for WaylandWindow {
             );
         }
 
-        // Version >4 changed behavour to not allow the reuse of seats after removal
-        let wl_seat: WlSeat = registry.bind::<WlSeat, _, _>(&queue.handle(), 1..=4, ()).unwrap();
-        let xdg_wm_base: XdgWmBase = registry.bind::<XdgWmBase, _, _>(&queue.handle(), 1..=3, ()).unwrap();
-        let wl_compositor: WlCompositor = registry.bind::<WlCompositor, _, _>(&queue.handle(), 1..=6, ()).unwrap();
-
-        let wl_pointer = wl_seat.get_pointer(&queue.handle(), ());
-        let wl_keyboard = wl_seat.get_keyboard(&queue.handle(), ());
-        let wl_surface = wl_compositor.create_surface(&queue.handle(), ());
-        let xdg_surface = xdg_wm_base.get_xdg_surface(&wl_surface, &queue.handle(), ());
-        let xdg_toplevel = xdg_surface.get_toplevel(&queue.handle(), ());
+        let wglobals = WaylandGlobals::new(&registry, &queue);
+        let wl_pointer = wglobals.wl_seat.get_pointer(&queue.handle(), ());
+        let wl_keyboard = wglobals.wl_seat.get_keyboard(&queue.handle(), ());
+        let wl_surface = wglobals.wl_compositor.create_surface(&queue.handle(), ());
+        let xdg_surface = wglobals.xdg_wm_base.get_xdg_surface(&wl_surface, &queue.handle(), ());
+        let wp_cursor_shape_device = wglobals.wp_cursor_shape_manager.get_pointer(&wl_pointer, &queue.handle(), ());
 
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
+        let xdg_toplevel = xdg_surface.get_toplevel(&queue.handle(), ());
 
         return Self {
             queue: queue,
             wlstate: state,
             connection: conn,
             registry: registry,
+            wlglobals: wglobals,
+            wdisplay: wl_display,
             events: Vec::default(),
-
-            wl_seat: wl_seat,
-            wl_display: wl_display,
-            xdg_wm_base: xdg_wm_base,
-            wl_compositor: wl_compositor,
 
             wl_pointer: wl_pointer,
             wl_surface: wl_surface,
             xdg_surface: xdg_surface,
             wl_keyboard: wl_keyboard,
             xdg_toplevel: xdg_toplevel,
+
+            wp_cursor_shape_device: wp_cursor_shape_device,
 
             xkb_state: None,
             xkb_keymap: None,
@@ -219,6 +244,11 @@ impl NativeWindow for WaylandWindow {
         // todo!()
     }
 
+    fn set_cursor(&mut self, cursor: Cursor) {
+        self.wlstate.cursor_shape = cursor;
+        self.wp_cursor_shape_device.set_shape(self.wlstate.pointer_entry, cursor.into());
+    }
+
     fn get_cursor_position(&self) -> (u32, u32) {
         // todo!()
         return (0, 0);
@@ -323,7 +353,7 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
                 log::debug!("Keyboard repeat info: rate={}, delay={}", rate, delay);
             }
             _ => {
-                log::debug!("Unhandled keyboard event: {:?}", event);
+                log::warn!("Unhandled keyboard event: {:?}", event);
             }
         }
     }
@@ -354,6 +384,16 @@ impl Dispatch<WlPointer, ()> for WaylandWindow {
                     _ => unreachable!("Unknown wayland button state??????"),
                 };
                 wlstate.events.push(WindowEvent::MouseButton(button, action));
+            }
+            wl_pointer::Event::Enter { serial, surface, surface_x, surface_y } => {
+                wlstate.wlstate.pointer_entry = serial; // Needed for cursor shape
+                // This event is sent when the pointer enters the surface of the window
+                // which which doesnt mean we have focus just that the pointer is over the window
+                wlstate.wp_cursor_shape_device.set_shape(serial, wlstate.wlstate.cursor_shape.into());
+                wlstate.events.push(WindowEvent::CursorPosition {
+                    mouse_x: surface_x,
+                    mouse_y: surface_y,
+                });
             }
             _ => {}
         }
@@ -400,12 +440,23 @@ impl HasDisplayHandle for WaylandWindow {
     fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
         unsafe {
             let handle = WaylandDisplayHandle::new(NonNull::new(
-                self.wl_display.id().as_ptr()
+                self.wdisplay.id().as_ptr()
                 .cast::<std::ffi::c_void>().into()
             ).unwrap());
 
             let rdh = RawDisplayHandle::Wayland(handle);
             return Ok(DisplayHandle::borrow_raw(rdh));
+        }
+    }
+}
+
+impl From<Cursor> for wp_cursor_shape_device::Shape {
+    fn from(cursor: Cursor) -> Self {
+        match cursor {
+            Cursor::Text => wp_cursor_shape_device::Shape::Text,
+            Cursor::Default => wp_cursor_shape_device::Shape::Default,
+            Cursor::Pointer => wp_cursor_shape_device::Shape::Pointer,
+            Cursor::Crosshair => wp_cursor_shape_device::Shape::Crosshair,
         }
     }
 }
