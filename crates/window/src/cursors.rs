@@ -7,3 +7,9 @@ pub enum Cursor {
     Text, Crosshair,
     Default, Pointer,
 }
+
+impl Default for Cursor {
+    fn default() -> Self {
+        return Cursor::Default;
+    }
+}
