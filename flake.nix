@@ -15,8 +15,9 @@
     devShells = forAllSystems (system: let
       pkgs = pkgsFor system;
       rustToolchain = pkgs.rust-bin.stable."1.92.0".default.override {
-        extensions = ["rust-src" "rust-std" "rust-analyzer"];
-        targets = ["x86_64-unknown-linux-gnu" "x86_64-pc-windows-gnu"];
+        extensions = ["rust-src" "rust-std" "rust-analyzer" "clippy"];
+        targets = ["x86_64-unknown-linux-gnu" "x86_64-pc-windows-gnu"
+                   "wasm32-unknown-unknown" "wasm32-unknown-emscripten"];
       };
     in {
       default = pkgs.mkShell rec {
@@ -32,7 +33,7 @@
           vulkan-headers vulkan-loader
           vulkan-validation-layers vulkan-tools
         ] ++ lib.optionals (pkgs.stdenv.isLinux) [
-          vulkan-tools-lunarg vulkan-extension-layer # cunts
+          vulkan-tools-lunarg vulkan-extension-layer # shite
           libX11 libXcursor libXrandr libXi libXinerama libxcb
           wayland wayland-protocols wayland-scanner libxkbcommon
         ];
