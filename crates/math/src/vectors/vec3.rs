@@ -1,3 +1,6 @@
+use bytemuck::{Pod, Zeroable};
+
+#[repr(C)]
 pub struct Vec3<T> {
     pub x: T,
     pub y: T,
