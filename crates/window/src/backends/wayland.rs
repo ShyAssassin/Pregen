@@ -290,20 +290,20 @@ impl Dispatch<XdgToplevel, ()> for WaylandWindow {
 
 impl Dispatch<WlKeyboard, ()> for WaylandWindow {
     fn event(
-        wlstate: &mut Self, _: &WlKeyboard, event: wl_keyboard::Event,
+        this: &mut Self, _: &WlKeyboard, event: wl_keyboard::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
     ) {
         match event {
             wl_keyboard::Event::Keymap { format, fd, size } => {
                 log::debug!("Keyboard keymap event: format={:?}, size={}", format, size);
                 if format == wayland_client::WEnum::Value(wl_keyboard::KeymapFormat::XkbV1) {
-                    match unsafe { xkb::Keymap::new_from_fd(&wlstate.xkb_context, fd,
+                    match unsafe { xkb::Keymap::new_from_fd(&this.xkb_context, fd,
                             size as usize, xkb::KEYMAP_FORMAT_TEXT_V1, xkb::KEYMAP_COMPILE_NO_FLAGS) } {
                         Ok(Some(keymap)) => {
                             log::info!("Loaded keymap with {} layouts", keymap.num_layouts());
                             let state = xkb::State::new(&keymap);
-                            wlstate.xkb_keymap = Some(keymap);
-                            wlstate.xkb_state = Some(state);
+                            this.xkb_keymap = Some(keymap);
+                            this.xkb_state = Some(state);
                         }
                         Ok(None) => {
                             log::error!("Failed to compile xkb keymap from compositor");
@@ -326,28 +326,28 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
                     _ => unreachable!("Unknown wayland key state, somehow"),
                 };
 
-                if let Some(xkb_state) = &wlstate.xkb_state {
+                if let Some(xkb_state) = &this.xkb_state {
                     let keysym = xkb_state.key_get_one_sym(xkb_keycode);
-                    wlstate.events.push(WindowEvent::KeyboardInput(keysym.into(), key, action));
+                    this.events.push(WindowEvent::KeyboardInput(keysym.into(), key, action));
                 } else {
-                    wlstate.events.push(WindowEvent::KeyboardInput(Key::Other(key), key, action));
+                    this.events.push(WindowEvent::KeyboardInput(Key::Other(key), key, action));
                     log::warn!("Keyboard event before xkb state initialized, using raw scancode {}", key);
                 }
             }
             wl_keyboard::Event::Modifiers { serial: _, mods_depressed, mods_latched, mods_locked, group } => {
-                if let Some(xkb_state) = &mut wlstate.xkb_state {
+                if let Some(xkb_state) = &mut this.xkb_state {
                     xkb_state.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 } else {
                     log::warn!("Received keyboard modifiers event before xkb state initialized");
                 }
             }
             wl_keyboard::Event::Enter { serial: _, surface: _, keys: _ } => {
-                wlstate.wlstate.focused = true;
-                wlstate.events.push(WindowEvent::FocusGained);
+                this.wlstate.focused = true;
+                this.events.push(WindowEvent::FocusGained);
             }
             wl_keyboard::Event::Leave { serial: _, surface: _ } => {
-                wlstate.wlstate.focused = false;
-                wlstate.events.push(WindowEvent::FocusLost);
+                this.wlstate.focused = false;
+                this.events.push(WindowEvent::FocusLost);
             }
             wl_keyboard::Event::RepeatInfo { rate, delay } => {
                 log::debug!("Keyboard repeat info: rate={}, delay={}", rate, delay);
@@ -361,12 +361,12 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
 
 impl Dispatch<WlPointer, ()> for WaylandWindow {
     fn event(
-        wlstate: &mut Self, _: &WlPointer, event: wl_pointer::Event,
+        this: &mut Self, _: &WlPointer, event: wl_pointer::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
     ) {
         match event {
             wl_pointer::Event::Motion { time: _, surface_x, surface_y } => {
-                wlstate.events.push(WindowEvent::CursorPosition {
+                this.events.push(WindowEvent::CursorPosition {
                     mouse_x: surface_x,
                     mouse_y: surface_y,
                 });
@@ -383,14 +383,14 @@ impl Dispatch<WlPointer, ()> for WaylandWindow {
                     wl_pointer::ButtonState::Released => Action::Released,
                     _ => unreachable!("Unknown wayland button state??????"),
                 };
-                wlstate.events.push(WindowEvent::MouseButton(button, action));
+                this.events.push(WindowEvent::MouseButton(button, action));
             }
             wl_pointer::Event::Enter { serial, surface, surface_x, surface_y } => {
-                wlstate.wlstate.pointer_entry = serial; // Needed for cursor shape
+                this.wlstate.pointer_entry = serial; // Needed for cursor shape
                 // This event is sent when the pointer enters the surface of the window
                 // which which doesnt mean we have focus just that the pointer is over the window
-                wlstate.wp_cursor_shape_device.set_shape(serial, wlstate.wlstate.cursor_shape.into());
-                wlstate.events.push(WindowEvent::CursorPosition {
+                this.wp_cursor_shape_device.set_shape(serial, this.wlstate.cursor_shape.into());
+                this.events.push(WindowEvent::CursorPosition {
                     mouse_x: surface_x,
                     mouse_y: surface_y,
                 });
