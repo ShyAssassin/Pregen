@@ -460,3 +460,11 @@ impl HasDisplayHandle for Window {
         return self.window.display_handle();
     }
 }
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        let _ = self.poll();
+        self.active_keys.clear();
+        self.close_requested = true;
+    }
+}
