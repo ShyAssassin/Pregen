@@ -14,7 +14,7 @@
   in {
     devShells = forAllSystems (system: let
       pkgs = pkgsFor system;
-      rustToolchain = pkgs.rust-bin.stable."1.92.0".default.override {
+      rustToolchain = pkgs.rust-bin.stable."1.97.0".default.override {
         extensions = ["rust-src" "rust-std" "rust-analyzer" "clippy"];
         targets = ["x86_64-unknown-linux-gnu" "x86_64-pc-windows-gnu"
                    "wasm32-unknown-unknown" "wasm32-unknown-emscripten"];
@@ -22,12 +22,13 @@
     in {
       default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
-          wgpu-utils tracy lldb
+          wgpu-utils lldb
+          wgsl-analyzer tracy
 
           # Build dependencies
-          rustToolchain clang mold
-          stdenv.cc.cc.lib pkg-config
-          unzip extra-cmake-modules cmake
+          rustToolchain clang unzip
+          stdenv.cc.cc.lib pkg-config mold
+          kdePackages.extra-cmake-modules cmake
 
           # Vulkan
           vulkan-headers vulkan-loader
