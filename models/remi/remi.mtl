@@ -1,0 +1,152 @@
+# Blender 4.5.2 LTS MTL File: 'None'
+# www.blender.org
+
+newmtl Arm_Bands
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Sleeves_Base Color.png
+map_Ke Sleeves_Emission.png
+
+newmtl Ass_Pants
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Ass Pants_Base Color.png
+map_Ke Ass Pants_Emission.png
+map_Bump Ass Pants_Normal_OpenGL.png
+
+newmtl Body
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Body_Base Color.png
+map_Ke Body_Emission.png
+map_Bump Body_Normal_OpenGL.png
+
+newmtl Bra
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+map_Kd Crop_Base Color.png
+map_Ke Crop_Emission.png
+map_d Crop_Base Color.png
+map_Bump Crop_Normal_OpenGL.png
+
+newmtl Details
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+map_Kd Holotags_Base Color.png
+map_Ke Holotag_Emission.png
+map_d Holotags_Base Color.png
+
+newmtl Dogtag
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+map_Kd Dogtag_Base Color.png
+map_Ke Dogtag_Emission.png
+map_d Dogtag_Base Color.png
+map_Bump Dogtag_Normal_OpenGL.png
+
+newmtl Eyes
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Eyes_Base Color.png
+map_Ke Eyes_Base Color.png
+
+newmtl Face
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Face_Base Color.png
+map_Bump Face_Normal_OpenGL.png
+
+newmtl Face_Details
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 1
+map_Kd Face Details.png
+map_d Face Details.png
+
+newmtl Gloves
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Gloves_Base Color.png
+map_Ke Gloves_Emission.png
+map_Bump Gloves_Normal.png
+
+newmtl Hair
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Hair_Base Color.png
+map_Ke Hair_Emission.png
+map_Bump Hair_Normal_OpenGL.png
+
+newmtl Jacket
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Jacket_Base Color.png
+map_Ke Jacket_Emission.png
+map_Bump Jacket_Normal_OpenGL.png
+
+newmtl Shoe
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Shoe_Base Color.png
+map_Ke Shoe_Emission.png
+map_Bump Shoe_Normal_OpenGL.png
+
+newmtl Thigh_Highs
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd Thigh Highs_BaseColor.png
+map_Ke Thigh Highs_Emission.png
+map_Bump Thigh Highs_Normal_OpenGL.png
