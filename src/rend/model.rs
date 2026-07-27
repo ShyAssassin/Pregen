@@ -38,6 +38,18 @@ impl Model {
         self.group.update(&ctx.queue);
     }
 
+    fn load_texture_or_empty(base_path: &std::path::Path, tex_name: &Option<String>) -> Arc<Image> {
+        if let Some(tex_name) = tex_name {
+            let tex_path = base_path.join(tex_name);
+            if tex_path.exists() {
+                return Arc::new(Image::from_path(&tex_path.to_str().unwrap().into(), 5));
+            } else {
+                log::error!("Warning: texture path does not exist: {:?}, using empty image", tex_path);
+            }
+        }
+        Arc::new(Image::empty())
+    }
+
     pub fn from_path(ctx: &mut RenderContext, name: Option<&str>, path: &str, transform: Transform) -> Self {
         let (models, materials) = tobj::load_obj(path, &tobj::LoadOptions {
             triangulate: true,
@@ -47,20 +59,15 @@ impl Model {
         let base_path = std::path::Path::new(path).parent().unwrap();
         let materials = materials.unwrap().iter().map(|m| {
             let mat = m.clone();
-            dbg!(&mat);
-            // let normal_path = base_path.join(mat.normal_texture.clone().unwrap());
-            let albedo_path = base_path.join(mat.diffuse_texture.clone().unwrap());
-            // let ambient_path = base_path.join(mat.ambient_texture.clone().unwrap());
+            let normal_image = Self::load_texture_or_empty(base_path, &mat.normal_texture);
+            let albedo_image = Self::load_texture_or_empty(base_path, &mat.diffuse_texture);
+            let ambient_image = Self::load_texture_or_empty(base_path, &mat.ambient_texture);
 
-            let albedo_image = Arc::new(Image::from_path(&albedo_path.to_str().unwrap().into(), 5));
-            // let normal_image = Arc::new(Image::from_path(&normal_path.to_str().unwrap().into(), 5));
-            // let ambient_image = Arc::new(Image::from_path(&ambient_path.to_str().unwrap().into(), 5));
-
-            // let normal = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8Unorm, normal_image));
+            let normal = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8Unorm, normal_image));
             let albedo = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8UnormSrgb, albedo_image));
-            // let ambient = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8UnormSrgb, ambient_image));
-            // Arc::new(Material::new(ctx, None, albedo, normal, ambient))
-            Arc::new(Material::new(ctx, Some(&mat.name), albedo.clone(), albedo.clone(), albedo.clone()))
+            let ambient = Arc::new(ctx.create_texture(None, SamplerMode::REPEAT, TextureFormat::Rgba8UnormSrgb, ambient_image));
+
+            Arc::new(Material::new(ctx, Some(&mat.name), albedo.clone(), normal.clone(), ambient.clone()))
         }).collect::<Vec<Arc<Material>>>();
 
         let mut geo = Vec::new();

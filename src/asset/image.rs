@@ -50,4 +50,14 @@ impl Image {
 
         return image;
     }
+
+    pub fn empty() -> Self {
+        Self {
+            width: 1,
+            height: 1,
+            path: None,
+            mip_levels: 1,
+            data: vec![vec![0, 0, 0, 0]],
+        }
+    }
 }

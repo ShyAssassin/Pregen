@@ -4,7 +4,6 @@ mod math;
 mod asset;
 mod macros;
 
-use log::Level;
 use asset::Image;
 use std::sync::Arc;
 use math::Transform;
@@ -39,7 +38,6 @@ fn main() {
         }
     }
 }
-
 
 struct FlyCamera {
     pub speed: f32,
@@ -86,7 +84,7 @@ impl FlyCamera {
 }
 
 // FIXME: consider combining render textures with textures, or have a trait for anything with a view
-async fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::RenderTexture) -> (wgpu::RenderPipeline, wgpu::BindGroup) {
+fn create_post_pipeline(context: &mut gfx::RenderContext, target: &gfx::RenderTexture) -> (wgpu::RenderPipeline, wgpu::BindGroup) {
     let shader = context.create_shader("shaders/post.wgsl");
 
     let layout = context.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -207,8 +205,9 @@ async fn wgpu_test() {
     camera.transform.translation.z = 3.0;
     camera.look_at((0.0, 0.0, 0.0).into());
     let mut camera = FlyCamera::new(camera, 0.02, 0.0015);
-    let remi = Model::from_path(&mut context, Some("Backpack"), "remi/remi.obj", Transform::default());
-    let model = Model::from_path(&mut context, Some("Backpack"), "backpack/backpack.obj", Transform::default());
+    let remi = Model::from_path(&mut context, Some("Remi"), "models/remi/remi.obj", Transform::default());
+    let sponza = Model::from_path(&mut context, Some("Sponza"), "models/sponza/sponza.obj", Transform::default());
+    let model = Model::from_path(&mut context, Some("Backpack"), "models/backpack/backpack.obj", Transform::default());
     let mut frame_bind = context.create_bind_group::<GlobalBindGroup>(None);
     let lights = (0..8).map(|_| {
         rend::LightingUniform {
@@ -288,7 +287,7 @@ async fn wgpu_test() {
     let mut capture_mouse = false;
     dbg!(&camera.camera.transform);
     // camera.update(&mut context, &window);
-    let (mut post_pipeline, mut post_bind_group) = create_post_pipeline(&mut context, &target).await;
+    let (mut post_pipeline, mut post_bind_group) = create_post_pipeline(&mut context, &target);
     while !window.should_close() {
         profiling::finish_frame!();
 
@@ -297,6 +296,18 @@ async fn wgpu_test() {
                 WindowEvent::FocusLost => {
                     capture_mouse = false;
                     window.capture_cursor(false);
+                }
+                WindowEvent::KeyboardInput(Key::Z, _, Action::Pressed) => {
+                    window.native_mut().set_cursor(window::Cursor::Default);
+                }
+                WindowEvent::KeyboardInput(Key::X, _, Action::Pressed) => {
+                    window.native_mut().set_cursor(window::Cursor::Pointer);
+                }
+                WindowEvent::KeyboardInput(Key::C, _, Action::Pressed) => {
+                    window.native_mut().set_cursor(window::Cursor::Crosshair);
+                }
+                WindowEvent::KeyboardInput(Key::V, _, Action::Pressed) => {
+                    window.native_mut().set_cursor(window::Cursor::Text);
                 }
                 WindowEvent::FramebufferResize { width, height } => {
                     if (width, height) != (0, 0) {
@@ -307,7 +318,7 @@ async fn wgpu_test() {
                         context.surface.configure(&context.device, &context.config);
                         target.resize(&context.device, context.config.width, context.config.height);
                         depth_texture.resize(&context.device, context.config.width, context.config.height);
-                        (post_pipeline, post_bind_group) = create_post_pipeline(&mut context, &target).await;
+                        (post_pipeline, post_bind_group) = create_post_pipeline(&mut context, &target);
                     }
                 }
                 WindowEvent::KeyboardInput(Key::Escape, _, Action::Pressed) => {
@@ -349,24 +360,14 @@ async fn wgpu_test() {
                 WindowEvent::KeyboardInput(Key::Equals, _, Action::Pressed) => {
                     camera.camera.fov += 1.0;
                 }
-                _ => {
-                    if let WindowEvent::CursorPosition { .. } = event {
-                        continue;
-                    }
-                    if let WindowEvent::Resize { .. } = event {
-                        continue;
-                    }
-                    // if let WindowEvent::KeyboardInput { .. } = event {
-                    //     continue;
-                    // }
-                    dbg!(&event);
-                }
+                _ => {}
             }
         }
 
         frame_bind.u_time.set(frame);
         frame_bind.update(&context.queue);
         camera.camera.update(&context.queue);
+        window.rename(format!("Pregen: Runtime - Frame {:.2}", frame));
         // camera.camera.transform.translation.x = frame.cos() * 3.0;
         // camera.camera.transform.translation.z = frame.sin() * 3.0;
         // camera.camera.look_at((0.0, 0.0, 0.0).into());
@@ -423,6 +424,12 @@ async fn wgpu_test() {
                 rpass.draw_indexed(mesh.geometry.range(), 0, 0..1);
             }
             for mesh in &remi.meshes {
+                rpass.set_bind_group(3, mesh.material.group.as_raw(), &[]);
+                rpass.set_vertex_buffer(0, mesh.geometry.vertex_buffer.slice(..));
+                rpass.set_index_buffer(mesh.geometry.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                rpass.draw_indexed(mesh.geometry.range(), 0, 0..1);
+            }
+            for mesh in &sponza.meshes {
                 rpass.set_bind_group(3, mesh.material.group.as_raw(), &[]);
                 rpass.set_vertex_buffer(0, mesh.geometry.vertex_buffer.slice(..));
                 rpass.set_index_buffer(mesh.geometry.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -542,8 +549,8 @@ async fn gfx_ne_test() {
             // In theory this should never happen unless the surface is changed but not reconfigured
             // But for some reason under xwayland the third frame invalidates the surface????
             Err(_) => {
+                log::info!("Reconfiguring surface");
                 surface.reconfigure();
-                // log::info!("Reconfiguring surface");
                 continue;
             }
         };

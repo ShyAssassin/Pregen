@@ -21,7 +21,7 @@ impl Default for CameraDescriptor {
             fov: 90.0,
             zoom: 1.00,
             z_near: 0.1,
-            z_far: 100.0,
+            z_far: 1000.0,
             aspect_ratio: 1.0,
             transform: Transform::default(),
         }
