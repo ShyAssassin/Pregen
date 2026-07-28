@@ -117,7 +117,7 @@ impl NativeWindow for GlfwWindow {
                     });
                 }
                 _ => {
-                    log::warn!("Unhandled event: {:?}", event);
+                    log::trace!("Unhandled event: {:?}", event);
                 }
             }
         }
