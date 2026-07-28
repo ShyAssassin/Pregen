@@ -209,19 +209,19 @@ async fn wgpu_test() {
     let sponza = Model::from_path(&mut context, Some("Sponza"), "models/sponza/sponza.obj", Transform::default());
     let model = Model::from_path(&mut context, Some("Backpack"), "models/backpack/backpack.obj", Transform::default());
     let mut frame_bind = context.create_bind_group::<GlobalBindGroup>(None);
-    let lights = (0..8).map(|_| {
+    let lights = (0..32).map(|_| {
         rend::LightingUniform {
             _padding: 0.0,
             position: glam::Vec3::new(
-                rand::random::<f32>() * 10.0 - 5.0,
-                rand::random::<f32>() * 10.0 - 5.0,
-                rand::random::<f32>() * 10.0 - 5.0
+                rand::random::<f32>() * 13.75 - 4.65,
+                rand::random::<f32>() * 13.75 - 4.65,
+                rand::random::<f32>() * 13.75 - 4.65
             ),
-            intensity: rand::random::<f32>() * 1.25,
+            intensity: rand::random::<f32>() * 1.35,
             color: glam::Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()),
         }
     }).collect::<Vec<_>>();
-    frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 8 lights"));
+    frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 32 lights"));
     let pipeline = context.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Render pipeline"),
         cache: None,
@@ -340,19 +340,19 @@ async fn wgpu_test() {
                     window.capture_cursor(capture_mouse);
                 }
                 WindowEvent::KeyboardInput(Key::L, _, Action::Pressed) => {
-                    let lights = (0..8).map(|_| {
+                    let lights = (0..32).map(|_| {
                         rend::LightingUniform {
                             _padding: 0.0,
                             position: glam::Vec3::new(
-                                rand::random::<f32>() * 10.0 - 5.0,
-                                rand::random::<f32>() * 10.0 - 5.0,
-                                rand::random::<f32>() * 10.0 - 5.0
+                                rand::random::<f32>() * 13.75 - 4.65,
+                                rand::random::<f32>() * 13.75 - 4.65,
+                                rand::random::<f32>() * 13.75 - 4.65
                             ),
                             intensity: rand::random::<f32>() * 1.25,
                             color: glam::Vec3::new(rand::random::<f32>(), rand::random::<f32>(), rand::random::<f32>()),
                         }
                     }).collect::<Vec<_>>();
-                    frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 8 lights"));
+                    frame_bind.u_lights.set(lights.try_into().expect("Expected exactly 32 lights"));
                 }
                 WindowEvent::KeyboardInput(Key::Minus, _, Action::Pressed) => {
                     camera.camera.fov -= 1.0;

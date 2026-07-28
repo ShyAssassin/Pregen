@@ -10,7 +10,7 @@ pub struct GlobalBindGroup {
     pub u_resolution: UniformBuffer<Vec2>,
     pub u_mouse: UniformBuffer<MouseUniform>,
     pub u_keyboard: UniformBuffer<KeyboardUniform>,
-    pub u_lights: UniformBuffer<[LightingUniform; 8]>,
+    pub u_lights: UniformBuffer<[LightingUniform; 32]>,
     pub u_coordinates: UniformBuffer<CoordinatesUniform>,
 }
 
@@ -33,5 +33,5 @@ impl_bind_group_state!(
     "Coordinate System",
     u_coordinates: CoordinatesUniform, 6,
     "Lighting",
-    u_lights: [LightingUniform; 8], 7
+    u_lights: [LightingUniform; 32], 7
 );
