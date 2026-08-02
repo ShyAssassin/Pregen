@@ -10,8 +10,10 @@ macro_rules! Import {
     };
 }
 
+Import!(wp::fractional_scale, v1, wp_fractional_scale_v1 => wp_fractional_scale, WpFractionalScaleV1 => WpFractionalScale);
 Import!(wp::cursor_shape, v1, wp_cursor_shape_device_v1 => wp_cursor_shape_device, WpCursorShapeDeviceV1 => WpCursorShapeDevice);
 Import!(wp::cursor_shape, v1, wp_cursor_shape_manager_v1 => wp_cursor_shape_manager, WpCursorShapeManagerV1 => WpCursorShapeManager);
+Import!(wp::fractional_scale, v1, wp_fractional_scale_manager_v1 => wp_fractional_scale_manager, WpFractionalScaleManagerV1 => WpFractionalScaleManager);
 
 use std::ptr::NonNull;
 use crate::window::NativeWindow;
@@ -32,20 +34,35 @@ use wayland_protocols::xdg::shell::client::{xdg_wm_base::XdgWmBase, xdg_toplevel
 use wayland_client::protocol::{wl_registry::WlRegistry, wl_display::WlDisplay, wl_surface::WlSurface, wl_compositor::WlCompositor};
 
 
-#[derive(Default)]
 pub struct WaylandState {
     pub width: i32,
     pub height: i32,
+    pub fbscale: f32,
     pub focused: bool,
     pub pointer_entry: u32,
     pub cursor_shape: Cursor,
 }
 
+impl Default for WaylandState {
+    fn default() -> Self {
+        Self {
+            width: 800,
+            height: 600,
+            fbscale: 1.0,
+            focused: false,
+            pointer_entry: 0,
+            cursor_shape: Cursor::Default,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct WaylandGlobals {
     pub wl_seat: WlSeat,
     pub xdg_wm_base: XdgWmBase,
     pub wl_compositor: WlCompositor,
     pub wp_cursor_shape_manager: WpCursorShapeManager,
+    pub wp_fractional_scale_manager: WpFractionalScaleManager,
 }
 
 impl WaylandGlobals {
@@ -56,12 +73,14 @@ impl WaylandGlobals {
         let xdg_wm_base: XdgWmBase = registry.bind(queue, 1..=3, ()).unwrap();
         let wl_compositor: WlCompositor = registry.bind(queue, 1..=6, ()).unwrap();
         let wp_cursor_shape_manager: WpCursorShapeManager = registry.bind(queue, 1..=1, ()).unwrap();
+        let wp_fractional_scale_manager: WpFractionalScaleManager = registry.bind(queue, 1..=1, ()).unwrap();
 
         return Self {
             wl_seat: wl_seat,
             xdg_wm_base: xdg_wm_base,
             wl_compositor: wl_compositor,
             wp_cursor_shape_manager: wp_cursor_shape_manager,
+            wp_fractional_scale_manager: wp_fractional_scale_manager,
         };
     }
 }
@@ -80,6 +99,7 @@ pub struct WaylandWindow {
     pub xdg_surface: XdgSurface,
     pub wl_keyboard: WlKeyboard,
     pub xdg_toplevel: XdgToplevel,
+    pub wp_fractional_scale: WpFractionalScale,
     pub wp_cursor_shape_device: WpCursorShapeDevice,
 
     pub xkb_context: xkb::Context,
@@ -92,6 +112,7 @@ delegate_noop!(WaylandWindow: WlRegistry);
 delegate_noop!(WaylandWindow: WlCompositor);
 delegate_noop!(WaylandWindow: WpCursorShapeDevice);
 delegate_noop!(WaylandWindow: WpCursorShapeManager);
+delegate_noop!(WaylandWindow: WpFractionalScaleManager);
 
 // TODO: dont ignore, these are important
 delegate_noop!(WaylandWindow: ignore WlSeat);
@@ -118,6 +139,7 @@ impl NativeWindow for WaylandWindow {
         let wl_surface = wglobals.wl_compositor.create_surface(&queue.handle(), ());
         let xdg_surface = wglobals.xdg_wm_base.get_xdg_surface(&wl_surface, &queue.handle(), ());
         let wp_cursor_shape_device = wglobals.wp_cursor_shape_manager.get_pointer(&wl_pointer, &queue.handle(), ());
+        let wp_fractional_scale = wglobals.wp_fractional_scale_manager.get_fractional_scale(&wl_surface, &queue.handle(), ());
 
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let xdg_toplevel = xdg_surface.get_toplevel(&queue.handle(), ());
@@ -137,6 +159,7 @@ impl NativeWindow for WaylandWindow {
             wl_keyboard: wl_keyboard,
             xdg_toplevel: xdg_toplevel,
 
+            wp_fractional_scale: wp_fractional_scale,
             wp_cursor_shape_device: wp_cursor_shape_device,
 
             xkb_state: None,
@@ -144,19 +167,11 @@ impl NativeWindow for WaylandWindow {
             xkb_context: xkb_context,
         };
 
-        // // Perform a roundtrip so the compositor's initial configure event
-        // // (with the actual window size) is received and processed before
-        // // anyone calls get_size(). Without this the window starts at 0x0
-        // // until the first poll() and the caller's requested size is used
-        // // instead of the compositor's, causing a size mismatch.
         // unsafe {
         //     let ptr = &mut window as *mut Self;
         //     (*ptr).queue.roundtrip(&mut *ptr).unwrap();
-        // }
-        // // Discard any events generated during init (e.g. the configure resize)
-        // // so they don't get double-processed when the caller first calls poll().
-        // // window.events.clear();
-        // return window;
+        //     (*ptr).queue.dispatch_pending(&mut *ptr).unwrap();
+        // } return window;
     }
 
     fn show(&mut self) {
@@ -184,14 +199,14 @@ impl NativeWindow for WaylandWindow {
         // could probably be done by caching the last key pressed
         // and then using the xkb repeat info to generate synthetic key events
 
-        self.connection.flush().unwrap();
         unsafe {
             let self_ptr = self as *mut Self;
+            (*self_ptr).connection.flush().unwrap();
             (*self_ptr).queue.roundtrip(&mut *self_ptr).unwrap();
             (*self_ptr).queue.dispatch_pending(&mut *self_ptr).unwrap();
         }
 
-        return self.events.drain(..).collect()
+        return self.events.drain(..).rev().collect()
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -220,8 +235,7 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn get_content_scale(&self) -> (f32, f32) {
-        // TODO: this
-        return (1.0, 1.0);
+        return (self.wlstate.fbscale, self.wlstate.fbscale);
     }
 
     fn set_title(&mut self, title: &str) {
@@ -255,7 +269,6 @@ impl NativeWindow for WaylandWindow {
     }
 }
 
-
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandWindow {
     fn event(
         _: &mut Self, _: &WlRegistry, event: wl_registry::Event,
@@ -265,24 +278,62 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandWindow {
     }
 }
 
+impl Dispatch<XdgSurface, ()> for WaylandWindow {
+    fn event(
+        _: &mut Self, xdg_surface: &XdgSurface, event: xdg_surface::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        if let xdg_surface::Event::Configure { serial } = event {
+            xdg_surface.ack_configure(serial);
+        }
+    }
+}
+
+impl Dispatch<XdgWmBase, ()> for WaylandWindow {
+    fn event(
+        _: &mut Self, xdg_wm_base: &XdgWmBase, event: xdg_wm_base::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        if let xdg_wm_base::Event::Ping { serial } = event {
+            xdg_wm_base.pong(serial);
+        }
+    }
+}
+
+impl Dispatch<WpFractionalScale, ()> for WaylandWindow {
+    fn event(
+        this: &mut Self, _: &WpFractionalScale, event: wp_fractional_scale::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        if let wp_fractional_scale::Event::PreferredScale { scale } = event {
+            this.wlstate.fbscale = scale as f32 / 120.0;
+            log::debug!("Fractional scale: {}", scale as f32 / 120.0);
+            this.events.push(WindowEvent::ScaleFactorChanged {
+                scale_x: this.wlstate.fbscale,
+                scale_y: this.wlstate.fbscale,
+            });
+        }
+    }
+}
+
 impl Dispatch<XdgToplevel, ()> for WaylandWindow {
     fn event(
-        wlstate: &mut Self, _: &XdgToplevel, event: xdg_toplevel::Event,
+        this: &mut Self, _: &XdgToplevel, event: xdg_toplevel::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
     ) {
         if let xdg_toplevel::Event::Close = event {
-            wlstate.events.push(WindowEvent::CloseRequested);
+            this.events.push(WindowEvent::CloseRequested);
         }
         // TODO: acording to IRC we should only send resize events to the queue
         // after we recieve an xdg_surface configure event, so cache and send later
         if let xdg_toplevel::Event::Configure { width, height, states: _ } = event {
             if width > 0 && height > 0 {
-                wlstate.wlstate.width = width;
-                wlstate.wlstate.height = height;
-                wlstate.events.push(WindowEvent::Resize {
+                this.wlstate.width = width as i32;
+                this.wlstate.height = height as i32;
+                this.events.push(WindowEvent::Resize {
                     width: width as u32,
                     height: height as u32,
-                });
+                }); log::debug!("Resized {}x{}", width, height);
             }
         }
     }
@@ -400,27 +451,6 @@ impl Dispatch<WlPointer, ()> for WaylandWindow {
     }
 }
 
-impl Dispatch<XdgSurface, ()> for WaylandWindow {
-    fn event(
-        _: &mut Self, xdg_surface: &XdgSurface, event: xdg_surface::Event,
-        _: &(), _: &Connection, _: &QueueHandle<Self>,
-    ) {
-        if let xdg_surface::Event::Configure { serial } = event {
-            xdg_surface.ack_configure(serial);
-        }
-    }
-}
-
-impl Dispatch<XdgWmBase, ()> for WaylandWindow {
-    fn event(
-        _: &mut Self, xdg_wm_base: &XdgWmBase, event: xdg_wm_base::Event,
-        _: &(), _: &Connection, _: &QueueHandle<Self>,
-    ) {
-        if let xdg_wm_base::Event::Ping { serial } = event {
-            xdg_wm_base.pong(serial);
-        }
-    }
-}
 
 impl HasWindowHandle for WaylandWindow {
     fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
