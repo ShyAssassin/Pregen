@@ -33,7 +33,7 @@ use wayland_client::protocol::{wl_seat::WlSeat, wl_keyboard::WlKeyboard, wl_poin
 use wayland_protocols::xdg::shell::client::{xdg_wm_base::XdgWmBase, xdg_toplevel::XdgToplevel, xdg_surface::XdgSurface};
 use wayland_client::protocol::{wl_registry::WlRegistry, wl_display::WlDisplay, wl_surface::WlSurface, wl_compositor::WlCompositor};
 
-
+#[derive(Default)]
 pub struct WaylandState {
     pub width: i32,
     pub height: i32,
@@ -41,19 +41,6 @@ pub struct WaylandState {
     pub focused: bool,
     pub pointer_entry: u32,
     pub cursor_shape: Cursor,
-}
-
-impl Default for WaylandState {
-    fn default() -> Self {
-        Self {
-            width: 800,
-            height: 600,
-            fbscale: 1.0,
-            focused: false,
-            pointer_entry: 0,
-            cursor_shape: Cursor::Default,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -144,7 +131,7 @@ impl NativeWindow for WaylandWindow {
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let xdg_toplevel = xdg_surface.get_toplevel(&queue.handle(), ());
 
-        return Self {
+        let mut window = Self {
             queue: queue,
             wlstate: state,
             connection: conn,
@@ -167,11 +154,15 @@ impl NativeWindow for WaylandWindow {
             xkb_context: xkb_context,
         };
 
-        // unsafe {
-        //     let ptr = &mut window as *mut Self;
-        //     (*ptr).queue.roundtrip(&mut *ptr).unwrap();
-        //     (*ptr).queue.dispatch_pending(&mut *ptr).unwrap();
-        // } return window;
+        // xdg-shell needs an initial wl_surface.commit (with no buffer)
+        // this is required to get the initial configure event from the compositor
+        // which tells us the initial size and scale + other state about this new window
+        unsafe { window.wl_surface.commit();
+            let ptr = &mut window as *mut Self;
+            // (*ptr).connection.flush().unwrap();
+            (*ptr).queue.roundtrip(&mut *ptr).unwrap();
+            (*ptr).queue.dispatch_pending(&mut *ptr).unwrap();
+        } window.events.clear(); return window;
     }
 
     fn show(&mut self) {
@@ -204,9 +195,7 @@ impl NativeWindow for WaylandWindow {
             (*self_ptr).connection.flush().unwrap();
             (*self_ptr).queue.roundtrip(&mut *self_ptr).unwrap();
             (*self_ptr).queue.dispatch_pending(&mut *self_ptr).unwrap();
-        }
-
-        return self.events.drain(..).rev().collect()
+        } return self.events.drain(..).collect()
     }
 
     fn resize(&mut self, width: u32, height: u32) {
