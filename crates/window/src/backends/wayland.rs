@@ -27,6 +27,8 @@ use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
 use wayland_client::protocol::*;
 use wayland_protocols::xdg::shell::client::*;
+use wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
+use wayland_protocols::wp::viewporter::client::wp_viewporter::WpViewporter;
 use wayland_client::globals::{GlobalList, GlobalListContents, registry_queue_init};
 use wayland_client::{Connection, EventQueue, QueueHandle, Proxy, Dispatch, delegate_noop};
 use wayland_client::protocol::{wl_seat::WlSeat, wl_keyboard::WlKeyboard, wl_pointer::WlPointer};
@@ -35,12 +37,15 @@ use wayland_client::protocol::{wl_registry::WlRegistry, wl_display::WlDisplay, w
 
 #[derive(Default)]
 pub struct WaylandState {
-    pub width: i32,
-    pub height: i32,
-    pub fbscale: f32,
     pub focused: bool,
     pub pointer_entry: u32,
     pub cursor_shape: Cursor,
+
+    pub width: i32,
+    pub height: i32,
+    pub frac_scale: f32,
+    pub pending_width: i32,
+    pub pending_height: i32,
 }
 
 #[derive(Debug)]
@@ -48,6 +53,7 @@ pub struct WaylandGlobals {
     pub wl_seat: WlSeat,
     pub xdg_wm_base: XdgWmBase,
     pub wl_compositor: WlCompositor,
+    pub wp_viewporter: WpViewporter,
     pub wp_cursor_shape_manager: WpCursorShapeManager,
     pub wp_fractional_scale_manager: WpFractionalScaleManager,
 }
@@ -59,6 +65,7 @@ impl WaylandGlobals {
         let wl_seat: WlSeat = registry.bind(queue, 1..=4, ()).unwrap();
         let xdg_wm_base: XdgWmBase = registry.bind(queue, 1..=3, ()).unwrap();
         let wl_compositor: WlCompositor = registry.bind(queue, 1..=6, ()).unwrap();
+        let wp_viewporter: WpViewporter = registry.bind(queue, 1..=1, ()).unwrap();
         let wp_cursor_shape_manager: WpCursorShapeManager = registry.bind(queue, 1..=1, ()).unwrap();
         let wp_fractional_scale_manager: WpFractionalScaleManager = registry.bind(queue, 1..=1, ()).unwrap();
 
@@ -66,6 +73,7 @@ impl WaylandGlobals {
             wl_seat: wl_seat,
             xdg_wm_base: xdg_wm_base,
             wl_compositor: wl_compositor,
+            wp_viewporter: wp_viewporter,
             wp_cursor_shape_manager: wp_cursor_shape_manager,
             wp_fractional_scale_manager: wp_fractional_scale_manager,
         };
@@ -85,6 +93,7 @@ pub struct WaylandWindow {
     pub wl_surface: WlSurface,
     pub xdg_surface: XdgSurface,
     pub wl_keyboard: WlKeyboard,
+    pub wp_viewport: WpViewport,
     pub xdg_toplevel: XdgToplevel,
     pub wp_fractional_scale: WpFractionalScale,
     pub wp_cursor_shape_device: WpCursorShapeDevice,
@@ -96,7 +105,9 @@ pub struct WaylandWindow {
 
 delegate_noop!(WaylandWindow: WlDisplay);
 delegate_noop!(WaylandWindow: WlRegistry);
+delegate_noop!(WaylandWindow: WpViewport);
 delegate_noop!(WaylandWindow: WlCompositor);
+delegate_noop!(WaylandWindow: WpViewporter);
 delegate_noop!(WaylandWindow: WpCursorShapeDevice);
 delegate_noop!(WaylandWindow: WpCursorShapeManager);
 delegate_noop!(WaylandWindow: WpFractionalScaleManager);
@@ -124,6 +135,7 @@ impl NativeWindow for WaylandWindow {
         let wl_pointer = wglobals.wl_seat.get_pointer(&queue.handle(), ());
         let wl_keyboard = wglobals.wl_seat.get_keyboard(&queue.handle(), ());
         let wl_surface = wglobals.wl_compositor.create_surface(&queue.handle(), ());
+        let wp_viewport = wglobals.wp_viewporter.get_viewport(&wl_surface, &queue.handle(), ());
         let xdg_surface = wglobals.xdg_wm_base.get_xdg_surface(&wl_surface, &queue.handle(), ());
         let wp_cursor_shape_device = wglobals.wp_cursor_shape_manager.get_pointer(&wl_pointer, &queue.handle(), ());
         let wp_fractional_scale = wglobals.wp_fractional_scale_manager.get_fractional_scale(&wl_surface, &queue.handle(), ());
@@ -144,8 +156,8 @@ impl NativeWindow for WaylandWindow {
             wl_surface: wl_surface,
             xdg_surface: xdg_surface,
             wl_keyboard: wl_keyboard,
+            wp_viewport: wp_viewport,
             xdg_toplevel: xdg_toplevel,
-
             wp_fractional_scale: wp_fractional_scale,
             wp_cursor_shape_device: wp_cursor_shape_device,
 
@@ -156,7 +168,7 @@ impl NativeWindow for WaylandWindow {
 
         // xdg-shell needs an initial wl_surface.commit (with no buffer)
         // this is required to get the initial configure event from the compositor
-        // which tells us the initial size and scale + other state about this new window
+        // which tells us the initial size, scale and other states about this new window
         unsafe { window.wl_surface.commit();
             let ptr = &mut window as *mut Self;
             // (*ptr).connection.flush().unwrap();
@@ -201,13 +213,15 @@ impl NativeWindow for WaylandWindow {
     fn resize(&mut self, width: u32, height: u32) {
         self.wlstate.width = width as i32;
         self.wlstate.height = height as i32;
+        self.wp_viewport.set_destination(width as i32, height as i32);
+
         // Wayland currently doesnt have a way for clients to suggest a size to the compositor,
         // the way resizing is handled is by attaching a new buffer of the desired size to
         // the wl_surface. Since we dont handle the wl_surface buffer directly we push
         // a resize event and hope the renderer handles resizing the buffer for us.
         self.events.push(WindowEvent::Resize {
-            width: width as u32,
-            height: height as u32,
+            width: width,
+            height: height,
         });
     }
 
@@ -224,7 +238,7 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn get_content_scale(&self) -> (f32, f32) {
-        return (self.wlstate.fbscale, self.wlstate.fbscale);
+        return (self.wlstate.frac_scale, self.wlstate.frac_scale);
     }
 
     fn set_title(&mut self, title: &str) {
@@ -267,17 +281,6 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for WaylandWindow {
     }
 }
 
-impl Dispatch<XdgSurface, ()> for WaylandWindow {
-    fn event(
-        _: &mut Self, xdg_surface: &XdgSurface, event: xdg_surface::Event,
-        _: &(), _: &Connection, _: &QueueHandle<Self>,
-    ) {
-        if let xdg_surface::Event::Configure { serial } = event {
-            xdg_surface.ack_configure(serial);
-        }
-    }
-}
-
 impl Dispatch<XdgWmBase, ()> for WaylandWindow {
     fn event(
         _: &mut Self, xdg_wm_base: &XdgWmBase, event: xdg_wm_base::Event,
@@ -295,11 +298,11 @@ impl Dispatch<WpFractionalScale, ()> for WaylandWindow {
         _: &(), _: &Connection, _: &QueueHandle<Self>,
     ) {
         if let wp_fractional_scale::Event::PreferredScale { scale } = event {
-            this.wlstate.fbscale = scale as f32 / 120.0;
+            this.wlstate.frac_scale = scale as f32 / 120.0;
             log::debug!("Fractional scale: {}", scale as f32 / 120.0);
             this.events.push(WindowEvent::ScaleFactorChanged {
-                scale_x: this.wlstate.fbscale,
-                scale_y: this.wlstate.fbscale,
+                scale_x: this.wlstate.frac_scale,
+                scale_y: this.wlstate.frac_scale,
             });
         }
     }
@@ -310,23 +313,54 @@ impl Dispatch<XdgToplevel, ()> for WaylandWindow {
         this: &mut Self, _: &XdgToplevel, event: xdg_toplevel::Event,
         _: &(), _: &Connection, _: &QueueHandle<Self>,
     ) {
-        if let xdg_toplevel::Event::Close = event {
-            this.events.push(WindowEvent::CloseRequested);
+        match event {
+            xdg_toplevel::Event::Close => {
+                this.events.push(WindowEvent::CloseRequested);
+            }
+            // This event indicates that the toplevel has been resized
+            // the compositor is *suggesting* a new size for the surface
+            // Inline with the protocol we store this suggestion as pending
+            // and only apply it when we receive a xdg_surface.configure event
+            xdg_toplevel::Event::Configure { width, height, states: _ } => {
+                if width > 0 && height > 0 {
+                    this.wlstate.pending_width = width;
+                    this.wlstate.pending_height = height;
+                }
+            }
+            _ => {}
         }
-        // TODO: acording to IRC we should only send resize events to the queue
-        // after we recieve an xdg_surface configure event, so cache and send later
-        if let xdg_toplevel::Event::Configure { width, height, states: _ } = event {
-            if width > 0 && height > 0 {
-                this.wlstate.width = width as i32;
-                this.wlstate.height = height as i32;
-                this.events.push(WindowEvent::Resize {
-                    width: width as u32,
-                    height: height as u32,
-                }); log::debug!("Resized {}x{}", width, height);
+    }
+}
+
+impl Dispatch<XdgSurface, ()> for WaylandWindow {
+    fn event(
+        this: &mut Self, xdg_surface: &XdgSurface, event: xdg_surface::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        if let xdg_surface::Event::Configure { serial } = event {
+            let pending_width = this.wlstate.pending_width;
+            let pending_height = this.wlstate.pending_height;
+            if pending_width > 0 && pending_height > 0 {
+                this.wlstate.width = pending_width;
+                this.wlstate.height = pending_height;
+                this.xdg_surface.ack_configure(serial);
+                log::debug!("Resized {}x{}", pending_width, pending_height);
+                this.wp_viewport.set_destination(pending_width, pending_height);
+                if pending_width != this.wlstate.width || pending_height != this.wlstate.height {
+                    this.events.push(WindowEvent::Resize {
+                        width: pending_width as u32,
+                        height: pending_height as u32,
+                    });
+                }
+            } else {
+                log::warn!("Server is requesting us to suggest a surface size");
+                this.wp_viewport.set_destination(this.wlstate.width, this.wlstate.height);
+                log::warn!("Reusing existing size {}x{}", this.wlstate.width, this.wlstate.height);
             }
         }
     }
 }
+
 
 impl Dispatch<WlKeyboard, ()> for WaylandWindow {
     fn event(
@@ -428,7 +462,7 @@ impl Dispatch<WlPointer, ()> for WaylandWindow {
             wl_pointer::Event::Enter { serial, surface, surface_x, surface_y } => {
                 this.wlstate.pointer_entry = serial; // Needed for cursor shape
                 // This event is sent when the pointer enters the surface of the window
-                // which which doesnt mean we have focus just that the pointer is over the window
+                // which doesnt mean we have focus just that the pointer is over the window
                 this.wp_cursor_shape_device.set_shape(serial, this.wlstate.cursor_shape.into());
                 this.events.push(WindowEvent::CursorPosition {
                     mouse_x: surface_x,
