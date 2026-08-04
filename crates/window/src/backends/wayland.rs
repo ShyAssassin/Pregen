@@ -40,6 +40,7 @@ pub struct WaylandState {
     pub focused: bool,
     pub pointer_entry: u32,
     pub cursor_shape: Cursor,
+    pub cursor_pos: (f64, f64),
 
     pub width: i32,
     pub height: i32,
@@ -270,8 +271,7 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn get_cursor_position(&self) -> (u32, u32) {
-        // todo!()
-        return (0, 0);
+        return (self.wlstate.cursor_pos.0 as u32, self.wlstate.cursor_pos.1 as u32);
     }
 }
 
