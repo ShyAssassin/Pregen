@@ -1,4 +1,4 @@
-// Cursor types here adhere *mostly* to the web's CSS cursor property
+// Cursor types here adhere *mostly* to the web's CSS cursor properties
 // https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor
 
 #[derive(Debug, Clone, Copy)]
