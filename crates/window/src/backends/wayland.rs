@@ -238,7 +238,10 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn get_content_scale(&self) -> (f32, f32) {
-        return (self.wlstate.frac_scale, self.wlstate.frac_scale);
+        if self.wlstate.frac_scale <= 0.0 {
+            log::warn!("Fractional scale is <= 0.0, defaulting to 1.0");
+            return (1.0, 1.0);
+        } return (self.wlstate.frac_scale, self.wlstate.frac_scale);
     }
 
     fn set_title(&mut self, title: &str) {
