@@ -10,10 +10,15 @@ macro_rules! Import {
     };
 }
 
+Import!(wp::pointer_constraints, zv1, zwp_locked_pointer_v1 => wp_locked_pointer, ZwpLockedPointerV1 => WpLockedPointer);
 Import!(wp::fractional_scale, v1, wp_fractional_scale_v1 => wp_fractional_scale, WpFractionalScaleV1 => WpFractionalScale);
+Import!(wp::relative_pointer, zv1, zwp_relative_pointer_v1 => wp_relative_pointer, ZwpRelativePointerV1 => WpRelativePointer);
 Import!(wp::cursor_shape, v1, wp_cursor_shape_device_v1 => wp_cursor_shape_device, WpCursorShapeDeviceV1 => WpCursorShapeDevice);
+Import!(wp::pointer_constraints, zv1, zwp_confined_pointer_v1 => zwp_confined_pointer, ZwpConfinedPointerV1 => WpConfinedPointer);
 Import!(wp::cursor_shape, v1, wp_cursor_shape_manager_v1 => wp_cursor_shape_manager, WpCursorShapeManagerV1 => WpCursorShapeManager);
+Import!(wp::pointer_constraints, zv1, zwp_pointer_constraints_v1 => wp_pointer_constraints, ZwpPointerConstraintsV1 => WpPointerConstraints);
 Import!(wp::fractional_scale, v1, wp_fractional_scale_manager_v1 => wp_fractional_scale_manager, WpFractionalScaleManagerV1 => WpFractionalScaleManager);
+Import!(wp::relative_pointer, zv1, zwp_relative_pointer_manager_v1 => wp_relative_pointer_manager, ZwpRelativePointerManagerV1 => WpRelativePointerManager);
 
 use std::ptr::NonNull;
 use crate::window::NativeWindow;
@@ -35,18 +40,18 @@ use wayland_client::protocol::{wl_seat::WlSeat, wl_keyboard::WlKeyboard, wl_poin
 use wayland_protocols::xdg::shell::client::{xdg_wm_base::XdgWmBase, xdg_toplevel::XdgToplevel, xdg_surface::XdgSurface};
 use wayland_client::protocol::{wl_registry::WlRegistry, wl_display::WlDisplay, wl_surface::WlSurface, wl_compositor::WlCompositor};
 
-#[derive(Default)]
+#[derive(Clone, Copy)]
+#[derive(Default, Debug)]
 pub struct WaylandState {
     pub focused: bool,
-    pub pointer_entry: u32,
-    pub cursor_shape: Cursor,
-    pub cursor_pos: (f64, f64),
-
-    pub width: i32,
-    pub height: i32,
     pub frac_scale: f32,
-    pub pending_width: i32,
-    pub pending_height: i32,
+    pub size: (i32, i32),
+    pub pointer_entry: u32,
+    pub cursor_locked: bool,
+    pub cursor_shape: Cursor,
+    pub cursor_confined: bool,
+    pub cursor_pos: (f64, f64),
+    pub pending_size: (i32, i32),
 }
 
 #[derive(Debug)]
@@ -55,8 +60,10 @@ pub struct WaylandGlobals {
     pub xdg_wm_base: XdgWmBase,
     pub wl_compositor: WlCompositor,
     pub wp_viewporter: WpViewporter,
+    pub wp_pointer_constraints: WpPointerConstraints,
     pub wp_cursor_shape_manager: WpCursorShapeManager,
     pub wp_fractional_scale_manager: WpFractionalScaleManager,
+    pub wp_relative_pointer_manager: WpRelativePointerManager,
 }
 
 impl WaylandGlobals {
@@ -67,16 +74,20 @@ impl WaylandGlobals {
         let xdg_wm_base: XdgWmBase = registry.bind(queue, 1..=3, ()).unwrap();
         let wl_compositor: WlCompositor = registry.bind(queue, 1..=6, ()).unwrap();
         let wp_viewporter: WpViewporter = registry.bind(queue, 1..=1, ()).unwrap();
-        let wp_cursor_shape_manager: WpCursorShapeManager = registry.bind(queue, 1..=1, ()).unwrap();
+        let wp_pointer_constraints: WpPointerConstraints = registry.bind(queue, 1..=1, ()).unwrap();
+        let wp_cursor_shape_manager: WpCursorShapeManager = registry.bind(queue, 1..=2, ()).unwrap();
         let wp_fractional_scale_manager: WpFractionalScaleManager = registry.bind(queue, 1..=1, ()).unwrap();
+        let wp_relative_pointer_manager: WpRelativePointerManager = registry.bind(queue, 1..=1, ()).unwrap();
 
         return Self {
             wl_seat: wl_seat,
             xdg_wm_base: xdg_wm_base,
             wl_compositor: wl_compositor,
             wp_viewporter: wp_viewporter,
+            wp_pointer_constraints: wp_pointer_constraints,
             wp_cursor_shape_manager: wp_cursor_shape_manager,
             wp_fractional_scale_manager: wp_fractional_scale_manager,
+            wp_relative_pointer_manager: wp_relative_pointer_manager,
         };
     }
 }
@@ -90,6 +101,14 @@ pub struct WaylandWindow {
     pub events: Vec<WindowEvent>,
     pub wlglobals: WaylandGlobals,
 
+    pub xkb_context: xkb::Context,
+    pub xkb_state: Option<xkb::State>,
+    pub xkb_keymap: Option<xkb::Keymap>,
+
+    pub wp_relative_pointer: WpRelativePointer,
+    pub wp_locked_pointer: Option<WpLockedPointer>,
+    pub wp_confined_pointer: Option<WpConfinedPointer>,
+
     pub wl_pointer: WlPointer,
     pub wl_surface: WlSurface,
     pub xdg_surface: XdgSurface,
@@ -98,10 +117,6 @@ pub struct WaylandWindow {
     pub xdg_toplevel: XdgToplevel,
     pub wp_fractional_scale: WpFractionalScale,
     pub wp_cursor_shape_device: WpCursorShapeDevice,
-
-    pub xkb_context: xkb::Context,
-    pub xkb_state: Option<xkb::State>,
-    pub xkb_keymap: Option<xkb::Keymap>,
 }
 
 delegate_noop!(WaylandWindow: WlDisplay);
@@ -111,7 +126,9 @@ delegate_noop!(WaylandWindow: WlCompositor);
 delegate_noop!(WaylandWindow: WpViewporter);
 delegate_noop!(WaylandWindow: WpCursorShapeDevice);
 delegate_noop!(WaylandWindow: WpCursorShapeManager);
+delegate_noop!(WaylandWindow: WpPointerConstraints);
 delegate_noop!(WaylandWindow: WpFractionalScaleManager);
+delegate_noop!(WaylandWindow: WpRelativePointerManager);
 
 // TODO: dont ignore, these are important
 delegate_noop!(WaylandWindow: ignore WlSeat);
@@ -140,6 +157,7 @@ impl NativeWindow for WaylandWindow {
         let xdg_surface = wglobals.xdg_wm_base.get_xdg_surface(&wl_surface, &queue.handle(), ());
         let wp_cursor_shape_device = wglobals.wp_cursor_shape_manager.get_pointer(&wl_pointer, &queue.handle(), ());
         let wp_fractional_scale = wglobals.wp_fractional_scale_manager.get_fractional_scale(&wl_surface, &queue.handle(), ());
+        let wp_relative_pointer = wglobals.wp_relative_pointer_manager.get_relative_pointer(&wl_pointer, &queue.handle(), ());
 
         let xkb_context = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
         let xdg_toplevel = xdg_surface.get_toplevel(&queue.handle(), ());
@@ -160,11 +178,15 @@ impl NativeWindow for WaylandWindow {
             wp_viewport: wp_viewport,
             xdg_toplevel: xdg_toplevel,
             wp_fractional_scale: wp_fractional_scale,
-            wp_cursor_shape_device: wp_cursor_shape_device,
 
-            xkb_state: None,
-            xkb_keymap: None,
             xkb_context: xkb_context,
+            xkb_state: Default::default(),
+            xkb_keymap: Default::default(),
+
+            wp_locked_pointer: Default::default(),
+            wp_confined_pointer: Default::default(),
+            wp_relative_pointer: wp_relative_pointer,
+            wp_cursor_shape_device: wp_cursor_shape_device,
         };
 
         // xdg-shell needs an initial wl_surface.commit (with no buffer)
@@ -172,7 +194,7 @@ impl NativeWindow for WaylandWindow {
         // which tells us the initial size, scale and other states about this new window
         unsafe { window.wl_surface.commit();
             let ptr = &mut window as *mut Self;
-            // (*ptr).connection.flush().unwrap();
+            // (**ptr).connection.flush().unwrap();
             (*ptr).queue.roundtrip(&mut *ptr).unwrap();
             (*ptr).queue.dispatch_pending(&mut *ptr).unwrap();
         } window.events.clear(); return window;
@@ -187,6 +209,12 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn shutdown(&mut self) {
+        if let Some(locked_pointer) = self.wp_locked_pointer.take() {
+            locked_pointer.destroy();
+        } if let Some(confined_pointer) = self.wp_confined_pointer.take() {
+            confined_pointer.destroy();
+        }
+
         self.connection.flush().unwrap();
     }
 
@@ -195,7 +223,21 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn lock_cursor(&mut self, lock: bool) {
-        // todo!()
+        if lock == true {
+            if self.wp_locked_pointer.is_none() {
+                self.wp_locked_pointer = Some(
+                    self.wlglobals.wp_pointer_constraints.lock_pointer(
+                        &self.wl_surface,
+                        &self.wl_pointer, None,
+                        wp_pointer_constraints::Lifetime::Oneshot,
+                        &self.queue.handle(), (),
+                    )
+                );
+            }
+        } else if let Some(locked_pointer) = self.wp_locked_pointer.take() {
+            locked_pointer.destroy();
+            self.wlstate.cursor_locked = false;
+        } // self.wlstate.cursor_locked = lock;
     }
 
     fn poll(&mut self) -> Vec<WindowEvent> {
@@ -204,16 +246,15 @@ impl NativeWindow for WaylandWindow {
         // and then using the xkb repeat info to generate synthetic key events
 
         unsafe {
-            let self_ptr = self as *mut Self;
-            (*self_ptr).connection.flush().unwrap();
-            (*self_ptr).queue.roundtrip(&mut *self_ptr).unwrap();
-            (*self_ptr).queue.dispatch_pending(&mut *self_ptr).unwrap();
+            let this = self as *mut Self;
+            (*this).connection.flush().unwrap();
+            (*this).queue.roundtrip(&mut *this).unwrap();
+            (*this).queue.dispatch_pending(&mut *this).unwrap();
         } return self.events.drain(..).collect()
     }
 
     fn resize(&mut self, width: u32, height: u32) {
-        self.wlstate.width = width as i32;
-        self.wlstate.height = height as i32;
+        self.wlstate.size = (width as i32, height as i32);
         self.wp_viewport.set_destination(width as i32, height as i32);
 
         // Wayland currently doesnt have a way for clients to suggest a size to the compositor,
@@ -227,8 +268,8 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn get_size(&self) -> (u32, u32) {
-        let width = self.wlstate.width as u32;
-        let height = self.wlstate.height as u32;
+        let width = self.wlstate.size.0 as u32;
+        let height = self.wlstate.size.1 as u32;
 
         return (width, height);
     }
@@ -254,7 +295,11 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn set_resizeable(&mut self, resizable: bool) {
-        // todo!()
+        if resizable {
+            self.xdg_toplevel.set_min_size(0, 0);
+        } else {
+            self.xdg_toplevel.set_min_size(self.wlstate.size.0, self.wlstate.size.1);
+        }
     }
 
     fn set_cursor_visible(&mut self, visible: bool) {
@@ -262,7 +307,12 @@ impl NativeWindow for WaylandWindow {
     }
 
     fn set_cursor_position(&mut self, x: u32, y: u32) {
-        // todo!()
+        self.wlstate.cursor_pos = (x as f64, y as f64);
+
+        if let Some(pointer) = &self.wp_locked_pointer {
+            pointer.set_cursor_position_hint(x as f64, y as f64);
+            self.wl_surface.commit(); // set position first :p
+        }
     }
 
     fn set_cursor(&mut self, cursor: Cursor) {
@@ -326,8 +376,54 @@ impl Dispatch<XdgToplevel, ()> for WaylandWindow {
             // and only apply it when we receive a xdg_surface.configure event
             xdg_toplevel::Event::Configure { width, height, states: _ } => {
                 if width > 0 && height > 0 {
-                    this.wlstate.pending_width = width;
-                    this.wlstate.pending_height = height;
+                    this.wlstate.pending_size = (width, height);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Dispatch<WpLockedPointer, ()> for WaylandWindow {
+    fn event(
+        this: &mut Self, _: &WpLockedPointer, event: wp_locked_pointer::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        match event {
+            wp_locked_pointer::Event::Locked => {
+                log::trace!("Pointer locked");
+                this.wlstate.cursor_locked = true;
+            }
+            wp_locked_pointer::Event::Unlocked => {
+                this.wlstate.cursor_locked = false;
+                log::debug!("Pointer unlocked by compositor");
+                if let Some(locked_pointer) = this.wp_locked_pointer.take() {
+                    locked_pointer.destroy();
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Dispatch<WpRelativePointer, ()> for WaylandWindow {
+    fn event(
+        this: &mut Self, _: &WpRelativePointer, event: wp_relative_pointer::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        match event {
+            wp_relative_pointer::Event::RelativeMotion {
+                utime_hi: _, utime_lo: _, dx, dy, dx_unaccel: _, dy_unaccel: _
+            } => {
+                // fake absolute motion events
+                if this.wlstate.cursor_locked {
+                    let (x, y) = this.wlstate.cursor_pos;
+                    let absolute_position = (x + dx, y + dy);
+                    this.wlstate.cursor_pos = absolute_position;
+                    this.events.push(WindowEvent::CursorPosition {
+                        mouse_x: absolute_position.0,
+                        mouse_y: absolute_position.1,
+                    });
                 }
             }
             _ => {}
@@ -341,29 +437,75 @@ impl Dispatch<XdgSurface, ()> for WaylandWindow {
         _: &(), _: &Connection, _: &QueueHandle<Self>,
     ) {
         if let xdg_surface::Event::Configure { serial } = event {
-            let pending_width = this.wlstate.pending_width;
-            let pending_height = this.wlstate.pending_height;
+            let (pending_width, pending_height) = this.wlstate.pending_size;
             if pending_width > 0 && pending_height > 0 {
-                this.wlstate.width = pending_width;
-                this.wlstate.height = pending_height;
                 this.xdg_surface.ack_configure(serial);
+                this.wlstate.size = (pending_width, pending_height);
                 log::debug!("Resized {}x{}", pending_width, pending_height);
                 this.wp_viewport.set_destination(pending_width, pending_height);
-                if pending_width != this.wlstate.width || pending_height != this.wlstate.height {
-                    this.events.push(WindowEvent::Resize {
-                        width: pending_width as u32,
-                        height: pending_height as u32,
-                    });
-                }
+
+                this.events.push(WindowEvent::Resize {
+                    width: pending_width as u32,
+                    height: pending_height as u32,
+                });
             } else {
                 log::warn!("Server is requesting us to suggest a surface size");
-                this.wp_viewport.set_destination(this.wlstate.width, this.wlstate.height);
-                log::warn!("Reusing existing size {}x{}", this.wlstate.width, this.wlstate.height);
+                this.wp_viewport.set_destination(this.wlstate.size.0, this.wlstate.size.1);
+                log::warn!("Reusing existing size {}x{}", this.wlstate.size.0, this.wlstate.size.1);
             }
         }
     }
 }
 
+impl Dispatch<WlPointer, ()> for WaylandWindow {
+    fn event(
+        this: &mut Self, _: &WlPointer, event: wl_pointer::Event,
+        _: &(), _: &Connection, _: &QueueHandle<Self>,
+    ) {
+        match event {
+            wl_pointer::Event::Motion { time: _, surface_x, surface_y } => {
+                // While the pointer is locked the compositor *should* not send us motion events
+                // but some compositors do not follow the spec and send us motion events anyway
+                // so we need to do this hot garbage shit to not mess up newer cursor position
+                if !this.wlstate.cursor_locked {
+                    this.wlstate.cursor_pos = (surface_x, surface_y);
+                    this.events.push(WindowEvent::CursorPosition {
+                        mouse_x: surface_x,
+                        mouse_y: surface_y,
+                    });
+                }
+            }
+            wl_pointer::Event::Button { serial: _, time: _, button, state } => {
+                let button = match button {
+                    0x110 => MouseButton::Left,
+                    0x111 => MouseButton::Right,
+                    0x112 => MouseButton::Middle,
+                    _ => MouseButton::Other(button),
+                };
+                let action = match state.into_result().unwrap() {
+                    wl_pointer::ButtonState::Pressed => Action::Pressed,
+                    wl_pointer::ButtonState::Released => Action::Released,
+                    _ => unreachable!("Unknown wayland button state??????"),
+                };
+                this.events.push(WindowEvent::MouseButton(button, action));
+            }
+            wl_pointer::Event::Enter { serial, surface, surface_x, surface_y } => {
+                this.wlstate.pointer_entry = serial; // Needed for cursor shape
+                // This event is sent when the pointer enters the surface of the window
+                // which doesnt mean we have focus just that the pointer is over the window
+                this.wp_cursor_shape_device.set_shape(serial, this.wlstate.cursor_shape.into());
+                if !this.wlstate.cursor_locked {
+                    this.wlstate.cursor_pos = (surface_x, surface_y);
+                    this.events.push(WindowEvent::CursorPosition {
+                        mouse_x: surface_x,
+                        mouse_y: surface_y,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+}
 
 impl Dispatch<WlKeyboard, ()> for WaylandWindow {
     fn event(
@@ -435,48 +577,6 @@ impl Dispatch<WlKeyboard, ()> for WaylandWindow {
         }
     }
 }
-
-impl Dispatch<WlPointer, ()> for WaylandWindow {
-    fn event(
-        this: &mut Self, _: &WlPointer, event: wl_pointer::Event,
-        _: &(), _: &Connection, _: &QueueHandle<Self>,
-    ) {
-        match event {
-            wl_pointer::Event::Motion { time: _, surface_x, surface_y } => {
-                this.events.push(WindowEvent::CursorPosition {
-                    mouse_x: surface_x,
-                    mouse_y: surface_y,
-                });
-            }
-            wl_pointer::Event::Button { serial: _, time: _, button, state } => {
-                let button = match button {
-                    0x110 => MouseButton::Left,
-                    0x111 => MouseButton::Right,
-                    0x112 => MouseButton::Middle,
-                    _ => MouseButton::Other(button),
-                };
-                let action = match state.into_result().unwrap() {
-                    wl_pointer::ButtonState::Pressed => Action::Pressed,
-                    wl_pointer::ButtonState::Released => Action::Released,
-                    _ => unreachable!("Unknown wayland button state??????"),
-                };
-                this.events.push(WindowEvent::MouseButton(button, action));
-            }
-            wl_pointer::Event::Enter { serial, surface, surface_x, surface_y } => {
-                this.wlstate.pointer_entry = serial; // Needed for cursor shape
-                // This event is sent when the pointer enters the surface of the window
-                // which doesnt mean we have focus just that the pointer is over the window
-                this.wp_cursor_shape_device.set_shape(serial, this.wlstate.cursor_shape.into());
-                this.events.push(WindowEvent::CursorPosition {
-                    mouse_x: surface_x,
-                    mouse_y: surface_y,
-                });
-            }
-            _ => {}
-        }
-    }
-}
-
 
 impl HasWindowHandle for WaylandWindow {
     fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
