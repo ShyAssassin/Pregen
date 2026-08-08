@@ -3,8 +3,8 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
-use crate::WindowEvent;
 use crate::window::NativeWindow;
+use crate::{WindowEvent, Cursor};
 use raw_window_handle::{DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle};
 
 use x11rb::protocol::xproto::*;
@@ -116,6 +116,10 @@ impl NativeWindow for X11Window {
 
     fn set_cursor_position(&mut self, x: u32, y: u32) {
         todo!()
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        // todo!()
     }
 
     fn get_cursor_position(&self) -> (u32, u32) {

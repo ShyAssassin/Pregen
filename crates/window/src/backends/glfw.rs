@@ -8,6 +8,7 @@ use glfw::{Glfw, GlfwReceiver, PWindow, WindowEvent as GlfwWindowEvent};
 #[derive(Debug)]
 pub struct GlfwWindow {
     glfw: Glfw,
+    cursor: Cursor,
     window: PWindow,
     events: GlfwReceiver<(f64, GlfwWindowEvent)>
 }
@@ -30,6 +31,7 @@ impl NativeWindow for GlfwWindow {
             glfw: glfw,
             window: window,
             events: events,
+            cursor: Cursor::Default
         };
     }
 
@@ -92,6 +94,7 @@ impl NativeWindow for GlfwWindow {
                     events.push(WindowEvent::FocusLost);
                 }
                 GlfwWindowEvent::Focus(true) => {
+                    self.set_cursor(self.cursor);
                     events.push(WindowEvent::FocusGained);
                 }
                 GlfwWindowEvent::Maximize(true) => {
@@ -171,13 +174,20 @@ impl NativeWindow for GlfwWindow {
     }
 
     fn set_cursor(&mut self, cursor: Cursor) {
-        let cursor = glfw::Cursor::standard(match cursor {
+        self.cursor = cursor;
+        let glfw_cursor = glfw::Cursor::standard(match cursor {
             Cursor::Text => glfw::StandardCursor::IBeam,
             Cursor::Pointer => glfw::StandardCursor::Hand,
             Cursor::Default => glfw::StandardCursor::Arrow,
             Cursor::Crosshair => glfw::StandardCursor::Crosshair,
+            Cursor::Hidden => {
+                self.window.set_cursor_mode(glfw::CursorMode::Hidden);
+                return;
+            }
         });
-        self.window.set_cursor(Some(cursor));
+
+        self.window.set_cursor(Some(glfw_cursor));
+        self.window.set_cursor_mode(glfw::CursorMode::Normal);
     }
 }
 
