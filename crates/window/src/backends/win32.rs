@@ -3,12 +3,13 @@ use winapi::um::winuser::*;
 use winapi::shared::basetsd::LONG_PTR;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::shared::windef::{HWND, POINT, PRECTL};
 use winapi::shared::winerror::ERROR_CLASS_ALREADY_EXISTS;
+use winapi::shared::windef::{HWND, POINT, PRECTL, HCURSOR};
 use winapi::shared::windowsx::{GET_X_LPARAM, GET_Y_LPARAM};
 use winapi::um::winbase::{GlobalAlloc, GlobalFree, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use winapi::shared::minwindef::{HINSTANCE, HIWORD, LOWORD, LPARAM, LPVOID, LRESULT, UINT, WPARAM};
 
+use crate::Cursor;
 use std::num::NonZero;
 use std::sync::{Mutex, Arc};
 use crate::window::NativeWindow;
@@ -21,7 +22,7 @@ use raw_window_handle::{DisplayHandle, WindowHandle, HandleError};
 
 #[derive(Debug)]
 struct Win32WindowState {
-    pub cursor_visible: Mutex<bool>,
+    pub current_cursor: Mutex<Cursor>,
     // FIXME: use a channel
     pub events: Mutex<Vec<WindowEvent>>,
 }
@@ -43,7 +44,7 @@ impl Win32Window {
             instance: null_mut(),
             state: Arc::new(Win32WindowState {
                 events: Mutex::new(Vec::new()),
-                cursor_visible: Mutex::new(true),
+                current_cursor: Mutex::new(Cursor::Default),
             }),
         }
     }
@@ -51,6 +52,16 @@ impl Win32Window {
     fn to_wstring(s: &str) -> Vec<u16> {
         use std::os::windows::ffi::OsStrExt;
         return OsStr::new(s).encode_wide().chain(Some(0)).collect();
+    }
+
+    unsafe fn cursor_to_handle(cursor: Cursor) -> HCURSOR {
+        return match cursor {
+            Cursor::Hidden => null_mut(),
+            Cursor::Text => LoadCursorW(null_mut(), IDC_IBEAM),
+            Cursor::Pointer => LoadCursorW(null_mut(), IDC_HAND),
+            Cursor::Default => LoadCursorW(null_mut(), IDC_ARROW),
+            Cursor::Crosshair => LoadCursorW(null_mut(), IDC_CROSS),
+        }
     }
 
     unsafe extern "system" fn wndproc(hwnd: HWND, msg: UINT, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
@@ -80,13 +91,10 @@ impl Win32Window {
                 // The cursor will be changed by windows itself when outside the client area
                 // When going back into the client area we just put the cursor back to the previous state
                 if LOWORD(l_param as u32) == HTCLIENT as u16 {
-                    if !(*state.cursor_visible.lock().unwrap()) {
-                        SetCursor(null_mut());
-                        return LRESULT::from(true);
-                    }
+                    let cursor = *state.current_cursor.lock().unwrap();
+                    SetCursor(Self::cursor_to_handle(cursor));
                 }
-                // MSDN says this should return false, it lied
-                return DefWindowProcW(hwnd, msg, w_param, l_param);
+                return LRESULT::from(0u8);
             }
 
             WM_DPICHANGED => {
@@ -414,11 +422,7 @@ impl NativeWindow for Win32Window {
     }
 
     fn set_cursor_visible(&mut self, visible: bool) {
-        unsafe {
-            *self.state.cursor_visible.lock().unwrap() = visible;
-            let cursor = if visible { LoadCursorW(null_mut(), IDC_ARROW) } else { null_mut() };
-            SetCursor(cursor);
-        }
+        self.set_cursor(if visible { Cursor::Default } else { Cursor::Hidden });
     }
 
     fn set_cursor_position(&mut self, x: u32, y: u32) {
@@ -426,6 +430,13 @@ impl NativeWindow for Win32Window {
             let mut point = POINT { x: x as i32, y: y as i32 };
             ClientToScreen(self.hwnd, &mut point);
             SetCursorPos(point.x, point.y);
+        }
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        unsafe {
+            SetCursor(Self::cursor_to_handle(cursor));
+            *self.state.current_cursor.lock().unwrap() = cursor;
         }
     }
 

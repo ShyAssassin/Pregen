@@ -105,6 +105,7 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
     ///
     /// This may be reversed automatically by the window manager when the window
     /// loses focus, implementations are not expected to track focus changes for this.
+    #[deprecated(note = "Replaced by set_cursor(Cursor::Default) and set_cursor(Cursor::Hidden)")]
     fn set_cursor_visible(&mut self, visible: bool);
 
     /// Moves the cursor to the provided position in logical pixels.
@@ -115,9 +116,7 @@ pub trait NativeWindow: HasWindowHandle + HasDisplayHandle {
 
     // TODO: Implement this!
     /// Sets the cursor icon to the specified type.
-    fn set_cursor(&mut self, cursor: Cursor) {
-        let _ = cursor;
-    }
+    fn set_cursor(&mut self, cursor: Cursor);
 }
 
 

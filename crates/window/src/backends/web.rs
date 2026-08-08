@@ -1,3 +1,4 @@
+use crate::Cursor;
 use std::ptr::NonNull;
 use crate::WindowEvent;
 use std::sync::{Arc, Mutex};
@@ -161,6 +162,21 @@ impl NativeWindow for WebWindow {
 
     fn set_cursor_visible(&mut self, visible: bool) {
         todo!("Will need to set the cursor style to none or default");
+    }
+
+    fn set_cursor(&mut self, cursor: Cursor) {
+        let cursor = match cursor {
+            Cursor::Text => "text",
+            Cursor::Hidden => "none",
+            Cursor::Default => "default",
+            Cursor::Pointer => "pointer",
+            Cursor::Crosshair => "crosshair",
+        };
+
+        match self.canvas.set_attribute("style", &format!("cursor: {};", cursor)) {
+            Err(err) => log::error!("Failed to set cursor style: {:?}", err),
+            Ok(_) => { log::trace!("Set cursor style to {}", cursor); }
+        }
     }
 
     fn set_cursor_position(&mut self, x: u32, y: u32) {

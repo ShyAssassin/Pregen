@@ -224,6 +224,7 @@ impl NativeWindow for WaylandWindow {
 
     fn lock_cursor(&mut self, lock: bool) {
         if lock == true {
+            self.set_cursor(Cursor::Hidden);
             if self.wp_locked_pointer.is_none() {
                 self.wp_locked_pointer = Some(
                     self.wlglobals.wp_pointer_constraints.lock_pointer(
@@ -236,6 +237,7 @@ impl NativeWindow for WaylandWindow {
             }
         } else if let Some(locked_pointer) = self.wp_locked_pointer.take() {
             locked_pointer.destroy();
+            self.set_cursor(Cursor::Default);
             self.wlstate.cursor_locked = false;
         } // self.wlstate.cursor_locked = lock;
     }
@@ -317,7 +319,18 @@ impl NativeWindow for WaylandWindow {
 
     fn set_cursor(&mut self, cursor: Cursor) {
         self.wlstate.cursor_shape = cursor;
-        self.wp_cursor_shape_device.set_shape(self.wlstate.pointer_entry, cursor.into());
+        let cursor = match cursor {
+            Cursor::Text => wp_cursor_shape_device::Shape::Text,
+            Cursor::Default => wp_cursor_shape_device::Shape::Default,
+            Cursor::Pointer => wp_cursor_shape_device::Shape::Pointer,
+            Cursor::Crosshair => wp_cursor_shape_device::Shape::Crosshair,
+            Cursor::Hidden => {
+                self.wl_pointer.set_cursor(self.wlstate.pointer_entry, None, 0, 0);
+                return
+            }
+        };
+
+        self.wp_cursor_shape_device.set_shape(self.wlstate.pointer_entry, cursor);
     }
 
     fn get_cursor_position(&self) -> (u32, u32) {
@@ -491,9 +504,9 @@ impl Dispatch<WlPointer, ()> for WaylandWindow {
             }
             wl_pointer::Event::Enter { serial, surface, surface_x, surface_y } => {
                 this.wlstate.pointer_entry = serial; // Needed for cursor shape
+                this.set_cursor(this.wlstate.cursor_shape); // Ensure we are reset
                 // This event is sent when the pointer enters the surface of the window
                 // which doesnt mean we have focus just that the pointer is over the window
-                this.wp_cursor_shape_device.set_shape(serial, this.wlstate.cursor_shape.into());
                 if !this.wlstate.cursor_locked {
                     this.wlstate.cursor_pos = (surface_x, surface_y);
                     this.events.push(WindowEvent::CursorPosition {
@@ -602,17 +615,6 @@ impl HasDisplayHandle for WaylandWindow {
 
             let rdh = RawDisplayHandle::Wayland(handle);
             return Ok(DisplayHandle::borrow_raw(rdh));
-        }
-    }
-}
-
-impl From<Cursor> for wp_cursor_shape_device::Shape {
-    fn from(cursor: Cursor) -> Self {
-        match cursor {
-            Cursor::Text => wp_cursor_shape_device::Shape::Text,
-            Cursor::Default => wp_cursor_shape_device::Shape::Default,
-            Cursor::Pointer => wp_cursor_shape_device::Shape::Pointer,
-            Cursor::Crosshair => wp_cursor_shape_device::Shape::Crosshair,
         }
     }
 }

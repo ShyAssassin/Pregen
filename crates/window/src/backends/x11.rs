@@ -118,6 +118,10 @@ impl NativeWindow for X11Window {
         todo!()
     }
 
+    fn set_cursor(&mut self, cursor: Cursor) {
+        // todo!()
+    }
+
     fn get_cursor_position(&self) -> (u32, u32) {
         todo!()
     }

@@ -309,6 +309,9 @@ async fn wgpu_test() {
                 WindowEvent::KeyboardInput(Key::V, _, Action::Pressed) => {
                     window.native_mut().set_cursor(window::Cursor::Text);
                 }
+                WindowEvent::KeyboardInput(Key::B, _, Action::Pressed) => {
+                    window.native_mut().set_cursor(window::Cursor::Hidden);
+                }
                 WindowEvent::FramebufferResize { width, height } => {
                     if (width, height) != (0, 0) {
                         context.config.width = width;
