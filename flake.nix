@@ -53,9 +53,9 @@
       windows = pkgs.pkgsCross.mingwW64.mkShell rec {
         nativeBuildInputs = with pkgs; [
           wineWow64Packages.stable
-          unzip extra-cmake-modules
           pkgsCross.mingwW64.stdenv.cc
           rustToolchain cmake pkg-config
+          unzip kdePackages.extra-cmake-modules
         ];
 
         buildInputs = with pkgs; [
