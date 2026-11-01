@@ -384,7 +384,7 @@ impl Dispatch<XdgToplevel, ()> for WaylandWindow {
                 this.events.push(WindowEvent::CloseRequested);
             }
             // This event indicates that the toplevel has been resized
-            // the compositor is *suggesting* a new size for the surface
+            // The compositor is *suggesting* a new size for the surface
             // Inline with the protocol we store this suggestion as pending
             // and only apply it when we receive a xdg_surface.configure event
             xdg_toplevel::Event::Configure { width, height, states: _ } => {
@@ -463,6 +463,8 @@ impl Dispatch<XdgSurface, ()> for WaylandWindow {
                     height: pending_height as u32,
                 });
             } else {
+                let (width, height) = this.wlstate.size;
+                if width > 0 && height > 0 { return } // TODO: unbork
                 log::warn!("Server is requesting us to suggest a surface size");
                 this.wp_viewport.set_destination(this.wlstate.size.0, this.wlstate.size.1);
                 log::warn!("Reusing existing size {}x{}", this.wlstate.size.0, this.wlstate.size.1);
