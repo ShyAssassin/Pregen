@@ -14,7 +14,7 @@
   in {
     devShells = forAllSystems (system: let
       pkgs = pkgsFor system;
-      rustToolchain = pkgs.rust-bin.stable."1.97.0".default.override {
+      rustToolchain = pkgs.rust-bin.stable."1.98.1".default.override {
         extensions = ["rust-src" "rust-std" "rust-analyzer" "clippy"];
         targets = ["x86_64-unknown-linux-gnu" "x86_64-pc-windows-gnu"
                    "wasm32-unknown-unknown" "wasm32-unknown-emscripten"];
