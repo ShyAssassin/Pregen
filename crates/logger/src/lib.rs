@@ -1,70 +1,19 @@
+mod sink;
+mod source;
+
+use source::LogSource;
 use std::collections::HashMap;
 use std::sync::{RwLock, OnceLock};
+use sink::{SinkEntry, SinkCallback};
 use colored::{ColoredString, Colorize};
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 
-#[derive(Debug, Clone)]
-#[derive(PartialEq, Eq, Hash)]
-pub struct LogSource {
-    pub toplevel: String,
-    pub submodules: Vec<String>,
-}
-
-impl LogSource {
-    pub fn new(toplevel: &str, submodules: Vec<&str>) -> Self {
-        return Self {
-            toplevel: toplevel.to_string(),
-            submodules: submodules.iter().map(|&s| s.to_string()).collect(),
-        }
-    }
-
-    pub fn from_target(target: &str) -> Self {
-        let mut parts = target.split("::").into_iter();
-        let toplevel = parts.next().unwrap_or("").to_string();
-        let submodules = parts.map(|sm| String::from(sm)).filter(|sm| {
-            // The last submodule specified is treated as a wildcard
-            // Also nuke relative module path specifiers, stinky!
-            !["*", ":", ".", "/", "\\",].contains(&sm.as_str())
-        }).collect();
-
-        return Self {
-            toplevel: toplevel,
-            submodules: submodules,
-        }
-    }
-
-    pub fn matches(&self, target: &str) -> bool {
-        let source = Self::from_target(target);
-
-        if source.submodules.len() < self.submodules.len() {
-            return false;
-        } else if self.toplevel != source.toplevel  {
-            return false;
-        }
-
-        for (i, submodule) in self.submodules.iter().enumerate() {
-            if submodule != &source.submodules[i] {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    pub fn target(&self) -> String {
-        return format!("{}::{}", self.toplevel, self.submodules.join("::"));
-    }
-}
-
-pub type LogCallSink = Box<dyn Fn(&Record) + Send + Sync>;
-
+static LOGGER: OnceLock<Logger> = OnceLock::new();
 pub struct Logger {
     pub log_level: RwLock<Level>,
-    pub sinks: RwLock<Vec<LogCallSink>>,
+    pub sinks: RwLock<Vec<SinkEntry>>,
     pub levels: RwLock<HashMap<LogSource, Level>>,
 }
-
-static LOGGER: OnceLock<Logger> = OnceLock::new();
 
 impl Logger {
     pub fn new(level: Level, levels: Vec<(LogSource, Level)>) -> Logger {
@@ -117,8 +66,8 @@ impl Log for Logger {
     }
 
     fn log(&self, record: &Record) {
-        for callback in self.sinks.read().unwrap().iter() {
-            callback(record);
+        for sink in self.sinks.read().unwrap().iter() {
+            sink.callback(record);
         }
 
         if self.enabled(record.metadata())  {
@@ -189,6 +138,7 @@ pub fn init() -> Result<(), SetLoggerError> {
         log::error!("Panic occurred at: {}\n\t\t-----------------> {}\n{}", location.black(), payload.bright_red(), trace);
     }));
 
+    // TODO: setting the log max level to trace is horid this should be from cli
     return log::set_logger(logger).map(|()| log::set_max_level(log::LevelFilter::Trace));
 }
 
@@ -198,17 +148,7 @@ pub fn get_raw_logger() -> &'static Logger {
 }
 
 /// Register a new log sink callback
-pub fn add_sink(callback: LogCallSink) {
-    LOGGER.get().unwrap().sinks.write().unwrap().push(callback);
-}
-
-/// Set the global log level
-pub fn set_level(level: Level) {
-    LOGGER.get().unwrap().set_level(level);
-}
-
-/// Set the log level for a specific source
-pub fn set_source_log(source: LogSource, level: Level) {
-    // FIXME: account for existing sources!!!!!!
-    LOGGER.get().unwrap().levels.write().unwrap().insert(source, level);
+pub fn add_sink(callback: SinkCallback, level: Level) {
+    let sink_entry_callback = SinkEntry::new(level, callback);
+    LOGGER.get().unwrap().sinks.write().unwrap().push(sink_entry_callback);
 }
